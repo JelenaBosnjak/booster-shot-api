@@ -27,8 +27,8 @@ export default function ContactList() {
 
   // --- Search and Tag Filter ---
   const [searchTerm, setSearchTerm] = useState('');
-  const [tags, setTags] = useState([]); // All tags for the location
-  const [selectedTag, setSelectedTag] = useState(''); // Tag selected for filter
+  const [tags, setTags] = useState([]);
+  const [selectedTag, setSelectedTag] = useState('');
 
   // --- AI Optimization/Test Message additions ---
   const [optimizing, setOptimizing] = useState(false);
@@ -40,7 +40,6 @@ export default function ContactList() {
     setLocationId(params.get('location_id'));
   }, []);
 
-  // Fetch all tags for this location (subaccount) on initial load
   useEffect(() => {
     async function fetchTags() {
       if (!locationId) return;
@@ -56,7 +55,6 @@ export default function ContactList() {
     fetchTags();
   }, [locationId]);
 
-  // Load Google Sheet offers from your Apps Script Web App (JSON)
   useEffect(() => {
     fetch(WEB_APP_URL)
       .then(res => res.json())
@@ -70,7 +68,6 @@ export default function ContactList() {
       });
   }, []);
 
-  // When Booster Shot category changes, update campaign names
   useEffect(() => {
     if (!boosterShotMessage) {
       setCampaignNames([]);
@@ -84,7 +81,6 @@ export default function ContactList() {
     setSmsMessage('');
   }, [boosterShotMessage, offers]);
 
-  // When campaign changes, update SMS message
   useEffect(() => {
     if (!campaign) {
       setSmsMessage('');
@@ -198,10 +194,10 @@ export default function ContactList() {
         return;
       }
 
-      // 2. Poll up to 3 times for the optimized message, only update if non-empty
+      // 2. Poll up to 3 times, 2 seconds apart (total 6 seconds)
       let fetchedMessage = "";
       for (let i = 0; i < 3; i++) {
-        await new Promise(r => setTimeout(r, 1000));
+        await new Promise(r => setTimeout(r, 2000));
         const fetchRes = await fetch(`/api/optimize-sms?locationId=${locationId}`);
         const fetchData = await fetchRes.json();
         if (fetchRes.ok && fetchData.boosterShotMessage && fetchData.boosterShotMessage.trim().length > 0) {
