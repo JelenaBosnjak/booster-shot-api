@@ -169,7 +169,7 @@ export default function ContactList() {
     }
   };
 
-  // --- AI Optimize Handler (calls /api/optimize-sms and fetches optimized value robustly) ---
+  // --- AI Optimize Handler (now waits up to 30 seconds) ---
   const handleOptimizeAI = async () => {
     if (!smsMessage) {
       alert("Please enter a message to optimize.");
@@ -194,9 +194,9 @@ export default function ContactList() {
         return;
       }
 
-      // 2. Poll up to 3 times, 2 seconds apart (total 6 seconds)
+      // 2. Poll up to 15 times, 2 seconds apart (total 30 seconds)
       let fetchedMessage = "";
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < 15; i++) {
         await new Promise(r => setTimeout(r, 2000));
         const fetchRes = await fetch(`/api/optimize-sms?locationId=${locationId}`);
         const fetchData = await fetchRes.json();
