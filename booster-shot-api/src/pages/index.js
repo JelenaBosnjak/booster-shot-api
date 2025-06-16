@@ -173,9 +173,30 @@ export default function ContactList() {
     }
   };
 
-  // --- AI Optimize Handler (no backend functionality yet) ---
-  const handleOptimizeAI = () => {
-    alert('Optimize Using AI functionality coming soon!');
+  // --- AI Optimize Handler (calls /api/optimize-sms) ---
+  const handleOptimizeAI = async () => {
+    if (!smsMessage) {
+      alert("Please enter a message to optimize.");
+      return;
+    }
+    setOptimizing(true);
+    try {
+      const res = await fetch("/api/optimize-sms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: smsMessage }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Failed to optimize message");
+      } else {
+        alert("Message sent to AI/workflow!");
+      }
+    } catch (err) {
+      alert("Failed to optimize SMS.");
+    } finally {
+      setOptimizing(false);
+    }
   };
 
   // --- Send Test Message Handler (no backend functionality yet) ---
