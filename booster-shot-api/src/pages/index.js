@@ -30,7 +30,7 @@ export default function ContactList() {
   const [tags, setTags] = useState([]); // All tags for the location
   const [selectedTag, setSelectedTag] = useState(''); // Tag selected for filter
 
-  // --- AI Optimization/Test Message ---
+  // --- AI Optimization/Test Message additions ---
   const [optimizing, setOptimizing] = useState(false);
   const [testPhone, setTestPhone] = useState('');
   const [sendingTest, setSendingTest] = useState(false);
@@ -173,34 +173,13 @@ export default function ContactList() {
     }
   };
 
-  // --- AI Optimize Handler ---
-  const handleOptimizeAI = async () => {
-    if (!smsMessage) {
-      alert('Please enter a message to optimize.');
-      return;
-    }
-    setOptimizing(true);
-    try {
-      const res = await fetch('/api/optimize-sms', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: smsMessage })
-      });
-      const data = await res.json();
-      if (!res.ok || !data.optimized) {
-        alert(data.error || 'Failed to optimize message');
-      } else {
-        setSmsMessage(data.optimized);
-      }
-    } catch (err) {
-      alert('Failed to optimize SMS.');
-    } finally {
-      setOptimizing(false);
-    }
+  // --- AI Optimize Handler (no backend functionality yet) ---
+  const handleOptimizeAI = () => {
+    alert('Optimize Using AI functionality coming soon!');
   };
 
-  // --- Send Test Message Handler ---
-  const handleSendTest = async () => {
+  // --- Send Test Message Handler (no backend functionality yet) ---
+  const handleSendTest = () => {
     if (!testPhone) {
       alert("Enter a phone number.");
       return;
@@ -209,27 +188,76 @@ export default function ContactList() {
       alert('No message to send.');
       return;
     }
-    setSendingTest(true);
+    alert(`Send Test Message to ${testPhone} coming soon!`);
+  };
+
+  // --- Launch Campaign Handler ---
+  const handleLaunchCampaign = async () => {
+    if (selectedContacts.size === 0) {
+      alert('Please select at least one contact.');
+      return;
+    }
+
+    setCampaignLoading(true);
+    setRateLimitError(null);
     try {
-      const res = await fetch('/api/send-test-sms', {
+      const confirmed = window.confirm(
+        `About to tag ${selectedContacts.size} contacts with "booster shot".\n\nThis may take several minutes for large batches. Continue?`
+      );
+      if (!confirmed) return;
+
+      const response = await fetch('/api/add-tag', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({
-          phone: testPhone,
-          message: smsMessage,
-          locationId,
+          contactIds: Array.from(selectedContacts),
+          tag: 'booster shot',
+          boosterShotMessage: smsMessage,
+          locationId
         })
       });
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || 'Failed to send test message');
-      } else {
-        alert('Test message sent!');
+
+      const result = await response.json();
+
+      if (response.status === 429) {
+        setRateLimitError({
+          message: result.error,
+          resetTime: result.resetTime
+        });
+        return;
       }
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to add tags');
+      }
+
+      // Detailed success/failure report
+      const successCount = result.results.filter(r => r.success).length;
+      const failedCount = result.results.length - successCount;
+
+      if (failedCount > 0) {
+        alert(`✅ ${successCount} contacts tagged successfully\n❌ ${failedCount} contacts failed`);
+      } else {
+        alert(`🎉 Successfully tagged all ${successCount} contacts!`);
+      }
+      if (result.customValueResult && !result.customValueResult.success) {
+        alert(`Warning: Custom Value update failed: ${result.customValueResult.error}`);
+      }
+
+      // Refresh contacts to see changes
+      if (locationId) {
+        const currentUrl = prevPages[currentPage - 1] ||
+          `/api/get-contacts?locationId=${locationId}&limit=${limit}`;
+        loadPage(currentUrl, currentPage);
+      }
+
     } catch (err) {
-      alert('Failed to send test message.');
+      console.error(err);
+      alert(`Error: ${err.message}`);
     } finally {
-      setSendingTest(false);
+      setCampaignLoading(false);
     }
   };
 
