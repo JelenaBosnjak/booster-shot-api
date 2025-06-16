@@ -4,8 +4,10 @@ export default async function handler(req, res) {
   }
 
   const { message, phone } = req.body;
+
+  // These are set in your Vercel environment
   const GHL_API_KEY = process.env.GHL_API_KEY || process.env.GHL_API_TOKEN;
-  const LOCATION_ID = process.env.GHL_LOCATION_ID; // Set this in your environment
+  const LOCATION_ID = process.env.GHL_LOCATION_ID;
 
   if (!message || !phone) {
     return res.status(400).json({ error: "Missing message or phone" });

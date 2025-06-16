@@ -200,7 +200,7 @@ export default function ContactList() {
     }
   };
 
-  // --- Send Test Message Handler (uses backend) ---
+  // --- Send Test Message Handler ---
   const handleSendTest = async () => {
     if (!testPhone) {
       alert("Enter a phone number.");
@@ -340,7 +340,6 @@ export default function ContactList() {
         <>
           <p><strong>Subaccount ID:</strong> {locationId}</p>
 
-          {/* ----- FORM SECTION WITH THE ONLY LAUNCH CAMPAIGN BUTTON ----- */}
           <div
             style={{
               background: '#f8f9fa',
@@ -468,7 +467,6 @@ export default function ContactList() {
               <em>Select contacts below before clicking Launch Campaign</em>
             </div>
           </div>
-          {/* ----- END OF FORM SECTION ----- */}
 
           <button
             onClick={handleLoadContacts}
@@ -532,7 +530,6 @@ export default function ContactList() {
                 marginBottom: '5px',
                 maxWidth: 450
               }}>
-                {/* Tag Filter */}
                 <select
                   value={selectedTag}
                   onChange={e => setSelectedTag(e.target.value)}
@@ -549,7 +546,6 @@ export default function ContactList() {
                   ))}
                 </select>
 
-                {/* Search Box */}
                 <input
                   type="text"
                   placeholder="Search contacts by name, email, or phone..."
@@ -564,7 +560,6 @@ export default function ContactList() {
                 />
               </div>
 
-              {/* Select All / Unselect All and Selected counter */}
               <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
