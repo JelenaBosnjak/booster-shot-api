@@ -1,4 +1,5 @@
 const API_TOKEN = process.env.GHL_API_TOKEN || process.env.GHL_API_KEY;
+const LOCATION_ID = process.env.GHL_ACCOUNT_ID; // <--- Updated to match your environment variable name!
 const GHL_API_CONTACTS_URL = "https://rest.gohighlevel.com/v1/contacts";
 const GHL_API_MESSAGES_URL = "https://rest.gohighlevel.com/v1/messages";
 
@@ -8,7 +9,6 @@ export default async function handler(req, res) {
   }
 
   const { message, phone } = req.body;
-  const LOCATION_ID = process.env.GHL_LOCATION_ID;
 
   if (!API_TOKEN || !LOCATION_ID) {
     return res.status(500).json({ error: "Missing API token or location ID" });
