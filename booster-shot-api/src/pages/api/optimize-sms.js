@@ -1,7 +1,20 @@
 export default async function handler(req, res) {
   // --- POST HANDLER: Send to webhook only ---
   if (req.method === "POST") {
-    const { message, locationId } = req.body;
+    // Parse body for Next.js edge or node runtimes
+    let message, locationId;
+    try {
+      // If body is already parsed (Node.js runtime)
+      if (req.body && typeof req.body === "object") {
+        ({ message, locationId } = req.body);
+      } else {
+        // If body is a string (Edge runtime)
+        ({ message, locationId } = JSON.parse(req.body || "{}"));
+      }
+    } catch {
+      return res.status(400).json({ error: "Invalid JSON" });
+    }
+
     const WEBHOOK_URL = "https://services.leadconnectorhq.com/hooks/QoVl53giULLNf7iUH7LE/webhook-trigger/b4ca2252-b3f8-4eee-991c-cd468b2a3b18";
 
     if (!message || !locationId) {

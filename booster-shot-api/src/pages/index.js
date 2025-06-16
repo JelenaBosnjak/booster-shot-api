@@ -169,7 +169,7 @@ export default function ContactList() {
     }
   };
 
-  // --- AI Optimize Handler (now waits up to 30 seconds) ---
+  // --- AI Optimize Handler: send to webhook only, no polling ---
   const handleOptimizeAI = async () => {
     if (!smsMessage) {
       alert("Please enter a message to optimize.");
@@ -181,7 +181,6 @@ export default function ContactList() {
     }
     setOptimizing(true);
     try {
-      // 1. Send to webhook and fetch optimized message after
       const res = await fetch("/api/optimize-sms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -193,24 +192,7 @@ export default function ContactList() {
         setOptimizing(false);
         return;
       }
-
-      // 2. Poll up to 15 times, 2 seconds apart (total 30 seconds)
-      let fetchedMessage = "";
-      for (let i = 0; i < 15; i++) {
-        await new Promise(r => setTimeout(r, 2000));
-        const fetchRes = await fetch(`/api/optimize-sms?locationId=${locationId}`);
-        const fetchData = await fetchRes.json();
-        if (fetchRes.ok && fetchData.boosterShotMessage && fetchData.boosterShotMessage.trim().length > 0) {
-          fetchedMessage = fetchData.boosterShotMessage;
-          break;
-        }
-      }
-
-      if (fetchedMessage) {
-        setSmsMessage(fetchedMessage);
-      } else {
-        alert("Optimized message not received from workflow yet. Please try again in a moment.");
-      }
+      alert("Optimization request sent!");
     } catch (err) {
       alert("Failed to optimize SMS.");
     } finally {
