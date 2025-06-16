@@ -1,27 +1,28 @@
+const API_TOKEN = process.env.GHL_API_TOKEN || process.env.GHL_API_KEY;
+const GHL_API_CONTACTS_URL = "https://rest.gohighlevel.com/v1/contacts";
+const GHL_API_MESSAGES_URL = "https://rest.gohighlevel.com/v1/messages";
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   const { message, phone } = req.body;
-
-  // These are set in your Vercel environment
-  const GHL_API_KEY = process.env.GHL_API_KEY || process.env.GHL_API_TOKEN;
   const LOCATION_ID = process.env.GHL_LOCATION_ID;
 
+  if (!API_TOKEN || !LOCATION_ID) {
+    return res.status(500).json({ error: "Missing API token or location ID" });
+  }
   if (!message || !phone) {
     return res.status(400).json({ error: "Missing message or phone" });
-  }
-  if (!GHL_API_KEY || !LOCATION_ID) {
-    return res.status(500).json({ error: "Missing GHL API key or location ID" });
   }
 
   try {
     // 1. Ensure contact exists (create or update)
-    const contactRes = await fetch("https://rest.gohighlevel.com/v1/contacts/", {
+    const contactRes = await fetch(GHL_API_CONTACTS_URL, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${GHL_API_KEY}`,
+        Authorization: `Bearer ${API_TOKEN}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
@@ -36,10 +37,10 @@ export default async function handler(req, res) {
     }
 
     // 2. Send the SMS
-    const smsRes = await fetch("https://rest.gohighlevel.com/v1/messages/", {
+    const smsRes = await fetch(GHL_API_MESSAGES_URL, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${GHL_API_KEY}`,
+        Authorization: `Bearer ${API_TOKEN}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
@@ -56,6 +57,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ success: true });
   } catch (e) {
+    console.error("Server Error:", e);
     return res.status(500).json({ error: e.message || "Unknown error sending test SMS." });
   }
 }
