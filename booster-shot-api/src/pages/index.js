@@ -30,6 +30,11 @@ export default function ContactList() {
   const [tags, setTags] = useState([]); // All tags for the location
   const [selectedTag, setSelectedTag] = useState(''); // Tag selected for filter
 
+  // --- AI Optimization/Test Message ---
+  const [optimizing, setOptimizing] = useState(false);
+  const [testPhone, setTestPhone] = useState('');
+  const [sendingTest, setSendingTest] = useState(false);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setLocationId(params.get('location_id'));
@@ -168,74 +173,63 @@ export default function ContactList() {
     }
   };
 
-  // Only keep one Launch Campaign button (in the form at the top)
-  // and make it launch the campaign for selected contacts
-  const handleLaunchCampaign = async () => {
-    if (selectedContacts.size === 0) {
-      alert('Please select at least one contact.');
+  // --- AI Optimize Handler ---
+  const handleOptimizeAI = async () => {
+    if (!smsMessage) {
+      alert('Please enter a message to optimize.');
       return;
     }
-
-    setCampaignLoading(true);
-    setRateLimitError(null);
+    setOptimizing(true);
     try {
-      const confirmed = window.confirm(
-        `About to tag ${selectedContacts.size} contacts with "booster shot".\n\nThis may take several minutes for large batches. Continue?`
-      );
-      if (!confirmed) return;
-
-      const response = await fetch('/api/add-tag', {
+      const res = await fetch('/api/optimize-sms', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: smsMessage })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.optimized) {
+        alert(data.error || 'Failed to optimize message');
+      } else {
+        setSmsMessage(data.optimized);
+      }
+    } catch (err) {
+      alert('Failed to optimize SMS.');
+    } finally {
+      setOptimizing(false);
+    }
+  };
+
+  // --- Send Test Message Handler ---
+  const handleSendTest = async () => {
+    if (!testPhone) {
+      alert("Enter a phone number.");
+      return;
+    }
+    if (!smsMessage) {
+      alert('No message to send.');
+      return;
+    }
+    setSendingTest(true);
+    try {
+      const res = await fetch('/api/send-test-sms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contactIds: Array.from(selectedContacts),
-          tag: 'booster shot',
-          boosterShotMessage: smsMessage,
-          locationId
+          phone: testPhone,
+          message: smsMessage,
+          locationId,
         })
       });
-
-      const result = await response.json();
-
-      if (response.status === 429) {
-        setRateLimitError({
-          message: result.error,
-          resetTime: result.resetTime
-        });
-        return;
-      }
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to add tags');
-      }
-
-      // Detailed success/failure report
-      const successCount = result.results.filter(r => r.success).length;
-      const failedCount = result.results.length - successCount;
-
-      if (failedCount > 0) {
-        alert(`✅ ${successCount} contacts tagged successfully\n❌ ${failedCount} contacts failed`);
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Failed to send test message');
       } else {
-        alert(`🎉 Successfully tagged all ${successCount} contacts!`);
+        alert('Test message sent!');
       }
-      if (result.customValueResult && !result.customValueResult.success) {
-        alert(`Warning: Custom Value update failed: ${result.customValueResult.error}`);
-      }
-
-      // Refresh contacts to see changes
-      if (locationId) {
-        const currentUrl = prevPages[currentPage - 1] ||
-          `/api/get-contacts?locationId=${locationId}&limit=${limit}`;
-        loadPage(currentUrl, currentPage);
-      }
-
     } catch (err) {
-      console.error(err);
-      alert(`Error: ${err.message}`);
+      alert('Failed to send test message.');
     } finally {
-      setCampaignLoading(false);
+      setSendingTest(false);
     }
   };
 
@@ -336,6 +330,57 @@ export default function ContactList() {
                 />
               </label>
             </div>
+
+            {/* --- OPTIMIZE & TEST SMS SECTION --- */}
+            <div style={{ marginBottom: '12px' }}>
+              <button
+                onClick={handleOptimizeAI}
+                disabled={optimizing || !smsMessage}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  background: '#ffae42',
+                  color: '#222',
+                  border: 'none',
+                  borderRadius: '4px',
+                  fontWeight: 600,
+                  marginBottom: '10px',
+                  cursor: optimizing || !smsMessage ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {optimizing ? 'Optimizing...' : '🤖 Optimize Using AI'}
+              </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  type="text"
+                  placeholder="Enter phone number"
+                  value={testPhone}
+                  onChange={e => setTestPhone(e.target.value)}
+                  style={{
+                    flex: 1,
+                    padding: '8px',
+                    border: '1px solid #ccc',
+                    borderRadius: '4px'
+                  }}
+                />
+                <button
+                  onClick={handleSendTest}
+                  disabled={sendingTest || !smsMessage || !testPhone}
+                  style={{
+                    padding: '8px 16px',
+                    background: '#0070f3',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '4px',
+                    fontWeight: 600,
+                    cursor: sendingTest || !smsMessage || !testPhone ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {sendingTest ? 'Sending...' : 'Send Test Message'}
+                </button>
+              </div>
+            </div>
+            {/* ---- END OPTIMIZE & TEST SMS SECTION ---- */}
 
             <button
               onClick={handleLaunchCampaign}
