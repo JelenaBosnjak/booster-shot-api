@@ -200,17 +200,34 @@ export default function ContactList() {
     }
   };
 
-  // --- Send Test Message Handler (no backend functionality yet) ---
-  const handleSendTest = () => {
+  // --- Send Test Message Handler (uses backend) ---
+  const handleSendTest = async () => {
     if (!testPhone) {
       alert("Enter a phone number.");
       return;
     }
     if (!smsMessage) {
-      alert('No message to send.');
+      alert("No message to send.");
       return;
     }
-    alert(`Send Test Message to ${testPhone} coming soon!`);
+    setSendingTest(true);
+    try {
+      const res = await fetch("/api/test-sms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: smsMessage, phone: testPhone })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Failed to send test SMS!");
+      } else {
+        alert("Test SMS sent!");
+      }
+    } catch (err) {
+      alert("Failed to send test SMS.");
+    } finally {
+      setSendingTest(false);
+    }
   };
 
   // --- Launch Campaign Handler ---
