@@ -27,8 +27,8 @@ export default function ContactList() {
 
   // --- Search and Tag Filter ---
   const [searchTerm, setSearchTerm] = useState('');
-  const [tags, setTags] = useState([]);
-  const [selectedTag, setSelectedTag] = useState('');
+  const [tags, setTags] = useState([]); // All tags for the location
+  const [selectedTag, setSelectedTag] = useState(''); // Tag selected for filter
 
   // --- AI Optimization/Test Message additions ---
   const [optimizing, setOptimizing] = useState(false);
@@ -40,6 +40,7 @@ export default function ContactList() {
     setLocationId(params.get('location_id'));
   }, []);
 
+  // Fetch all tags for this location (subaccount) on initial load
   useEffect(() => {
     async function fetchTags() {
       if (!locationId) return;
@@ -55,6 +56,7 @@ export default function ContactList() {
     fetchTags();
   }, [locationId]);
 
+  // Load Google Sheet offers from your Apps Script Web App (JSON)
   useEffect(() => {
     fetch(WEB_APP_URL)
       .then(res => res.json())
@@ -68,6 +70,7 @@ export default function ContactList() {
       });
   }, []);
 
+  // When Booster Shot category changes, update campaign names
   useEffect(() => {
     if (!boosterShotMessage) {
       setCampaignNames([]);
@@ -81,6 +84,7 @@ export default function ContactList() {
     setSmsMessage('');
   }, [boosterShotMessage, offers]);
 
+  // When campaign changes, update SMS message
   useEffect(() => {
     if (!campaign) {
       setSmsMessage('');
@@ -169,7 +173,7 @@ export default function ContactList() {
     }
   };
 
-  // --- AI Optimize Handler (calls /api/optimize-sms and fetches optimized value) ---
+  // --- AI Optimize Handler (calls /api/optimize-sms and fetches optimized value robustly) ---
   const handleOptimizeAI = async () => {
     if (!smsMessage) {
       alert("Please enter a message to optimize.");
@@ -193,19 +197,23 @@ export default function ContactList() {
         setOptimizing(false);
         return;
       }
-      // 2. If optimized message returned (fast), use it, otherwise do GET
-      if (data.optimized !== undefined) {
-        setSmsMessage(data.optimized);
-      } else {
-        // fallback: fetch via GET
+
+      // 2. Poll up to 3 times for the optimized message, only update if non-empty
+      let fetchedMessage = "";
+      for (let i = 0; i < 3; i++) {
         await new Promise(r => setTimeout(r, 1000));
         const fetchRes = await fetch(`/api/optimize-sms?locationId=${locationId}`);
         const fetchData = await fetchRes.json();
-        if (fetchRes.ok && fetchData.boosterShotMessage) {
-          setSmsMessage(fetchData.boosterShotMessage);
-        } else {
-          alert(fetchData.error || "Could not fetch optimized message");
+        if (fetchRes.ok && fetchData.boosterShotMessage && fetchData.boosterShotMessage.trim().length > 0) {
+          fetchedMessage = fetchData.boosterShotMessage;
+          break;
         }
+      }
+
+      if (fetchedMessage) {
+        setSmsMessage(fetchedMessage);
+      } else {
+        alert("Optimized message not received from workflow yet. Please try again in a moment.");
       }
     } catch (err) {
       alert("Failed to optimize SMS.");
@@ -214,6 +222,7 @@ export default function ContactList() {
     }
   };
 
+  // --- Send Test Message Handler (no backend functionality yet) ---
   const handleSendTest = () => {
     if (!testPhone) {
       alert("Enter a phone number.");
@@ -226,6 +235,7 @@ export default function ContactList() {
     alert(`Send Test Message to ${testPhone} coming soon!`);
   };
 
+  // --- Launch Campaign Handler ---
   const handleLaunchCampaign = async () => {
     if (selectedContacts.size === 0) {
       alert('Please select at least one contact.');
@@ -293,6 +303,7 @@ export default function ContactList() {
     }
   };
 
+  // Helper: filter contacts by search term and selected tag
   const filteredContacts = () => {
     let filtered = contacts;
     if (selectedTag) {
@@ -312,6 +323,7 @@ export default function ContactList() {
     return filtered;
   };
 
+  // Helper to show time until rate limit resets
   const getResetTimeString = () => {
     if (rateLimitError?.resetTime) {
       const seconds = Number(rateLimitError.resetTime);
@@ -333,6 +345,7 @@ export default function ContactList() {
         <>
           <p><strong>Subaccount ID:</strong> {locationId}</p>
 
+          {/* ----- FORM SECTION WITH THE ONLY LAUNCH CAMPAIGN BUTTON ----- */}
           <div
             style={{
               background: '#f8f9fa',
@@ -388,6 +401,7 @@ export default function ContactList() {
               </label>
             </div>
 
+            {/* --- OPTIMIZE & TEST SMS SECTION --- */}
             <div style={{ marginBottom: '12px' }}>
               <button
                 onClick={handleOptimizeAI}
@@ -436,6 +450,7 @@ export default function ContactList() {
                 </button>
               </div>
             </div>
+            {/* ---- END OPTIMIZE & TEST SMS SECTION ---- */}
 
             <button
               onClick={handleLaunchCampaign}
@@ -458,6 +473,7 @@ export default function ContactList() {
               <em>Select contacts below before clicking Launch Campaign</em>
             </div>
           </div>
+          {/* ----- END OF FORM SECTION ----- */}
 
           <button
             onClick={handleLoadContacts}
@@ -521,6 +537,7 @@ export default function ContactList() {
                 marginBottom: '5px',
                 maxWidth: 450
               }}>
+                {/* Tag Filter */}
                 <select
                   value={selectedTag}
                   onChange={e => setSelectedTag(e.target.value)}
@@ -536,6 +553,8 @@ export default function ContactList() {
                     <option key={tag} value={tag}>{tag}</option>
                   ))}
                 </select>
+
+                {/* Search Box */}
                 <input
                   type="text"
                   placeholder="Search contacts by name, email, or phone..."
@@ -550,6 +569,7 @@ export default function ContactList() {
                 />
               </div>
 
+              {/* Select All / Unselect All and Selected counter */}
               <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',

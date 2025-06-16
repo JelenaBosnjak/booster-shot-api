@@ -30,7 +30,7 @@ export default async function handler(req, res) {
       // After sending to webhook, try to fetch the optimized message back (if locationId is provided)
       if (locationId) {
         // Wait a short time to allow workflow to complete (adjust as needed)
-        await new Promise(r => setTimeout(r, 2000));
+        await new Promise(r => setTimeout(r, 1000));
 
         // Fetch from GHL location API
         const GHL_API_KEY = process.env.GHL_API_KEY || process.env.GHL_API_TOKEN;
