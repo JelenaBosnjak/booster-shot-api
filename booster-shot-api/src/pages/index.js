@@ -16,6 +16,7 @@ export default function ContactList() {
   const [debugInfo, setDebugInfo] = useState({});
   const [campaignLoading, setCampaignLoading] = useState(false);
   const [rateLimitError, setRateLimitError] = useState(null);
+  const [testDebug, setTestDebug] = useState(null); // For SMS debug info
 
   // --- Booster shot/campaign/message selection from Google Sheet ---
   const [boosterShotMessage, setBoosterShotMessage] = useState('');
@@ -202,6 +203,7 @@ export default function ContactList() {
 
   // --- Send Test Message Handler (calls backend) ---
   const handleSendTest = async () => {
+    setTestDebug(null);
     if (!testPhone) {
       alert("Enter a phone number.");
       return;
@@ -218,13 +220,34 @@ export default function ContactList() {
         body: JSON.stringify({ message: smsMessage, phone: testPhone })
       });
       const data = await res.json();
+      setTestDebug(data); // set debug info always
       if (!res.ok) {
-        alert(data.error || "Failed to send test SMS!");
+        // Show all debug info in a nice way
+        alert(
+          "Test SMS failed!\n" +
+          (data.error ? `Error: ${data.error}\n` : "") +
+          (data.smsStep ? `Step: ${data.smsStep}\n` : "") +
+          (data.debugToken ? `DebugToken: ${data.debugToken}\n` : "") +
+          (data.smsStatus ? `SMS Status: ${data.smsStatus}\n` : "") +
+          (data.smsResponse ? `SMS Response: ${data.smsResponse}\n` : "") +
+          (data.details ? `Details: ${data.details}\n` : "") +
+          (data.customValueResult && !data.customValueResult.success 
+            ? `Custom Value Error: ${JSON.stringify(data.customValueResult, null, 2)}\n` 
+            : ""
+          )
+        );
       } else {
-        alert("Test SMS sent!");
+        let msg = "Test SMS sent!\n";
+        if (data.fromNumber) msg += `From number: ${data.fromNumber}\n`;
+        if (data.debugToken) msg += `DebugToken: ${data.debugToken}\n`;
+        if (data.customValueResult && !data.customValueResult.success) {
+          msg += "Warning: Custom Value update failed: " + JSON.stringify(data.customValueResult, null, 2) + "\n";
+        }
+        if (data.smsApiResponse) msg += `SMS API Response: ${data.smsApiResponse}\n`;
+        alert(msg);
       }
     } catch (err) {
-      alert("Failed to send test SMS.");
+      alert("Failed to send test SMS. Error: " + err.message);
     } finally {
       setSendingTest(false);
     }
@@ -339,8 +362,6 @@ export default function ContactList() {
       {locationId ? (
         <>
           <p><strong>Subaccount ID:</strong> {locationId}</p>
-
-          {/* ----- FORM SECTION WITH THE ONLY LAUNCH CAMPAIGN BUTTON ----- */}
           <div
             style={{
               background: '#f8f9fa',
@@ -444,8 +465,12 @@ export default function ContactList() {
                   {sendingTest ? 'Sending...' : 'Send Test Message'}
                 </button>
               </div>
+              {testDebug && (
+                <pre style={{ marginTop: 10, background: "#f9f9f9", color: "#333", fontSize: 12, padding: 10, borderRadius: 6, border: "1px solid #eee", maxHeight: 250, overflow: "auto" }}>
+                  {JSON.stringify(testDebug, null, 2)}
+                </pre>
+              )}
             </div>
-            {/* ---- END OPTIMIZE & TEST SMS SECTION ---- */}
 
             <button
               onClick={handleLaunchCampaign}
@@ -468,7 +493,6 @@ export default function ContactList() {
               <em>Select contacts below before clicking Launch Campaign</em>
             </div>
           </div>
-          {/* ----- END OF FORM SECTION ----- */}
 
           <button
             onClick={handleLoadContacts}
