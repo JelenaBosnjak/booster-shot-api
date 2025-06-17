@@ -2,9 +2,9 @@ const API_TOKEN = process.env.GHL_API_TOKEN || process.env.GHL_API_KEY;
 const LOCATION_ID = process.env.GHL_ACCOUNT_ID;
 const GHL_API_CONTACTS_URL = "https://rest.gohighlevel.com/v1/contacts";
 const GHL_API_MESSAGES_URL = "https://rest.gohighlevel.com/v1/messages";
-const GHL_API_PHONE_NUMBERS_URL = `https://rest.gohighlevel.com/v1/locations/${LOCATION_ID}/phoneNumbers`;
+const GHL_API_LOCATION_URL = `https://rest.gohighlevel.com/v1/locations/${LOCATION_ID}`;
 const GHL_API_CUSTOM_VALUES_URL = "https://rest.gohighlevel.com/v1/customValues";
-const CUSTOM_VALUE_KEY = "Booster Shot Message"; // update if your custom value key is different
+const CUSTOM_VALUE_KEY = "Booster Shot Message"; // Update if your custom value key is different
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -21,23 +21,19 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. Fetch subaccount's SMS number(s)
-    const phoneRes = await fetch(GHL_API_PHONE_NUMBERS_URL, {
+    // 1. Fetch subaccount's main phone number (sender)
+    const locationRes = await fetch(GHL_API_LOCATION_URL, {
       method: "GET",
       headers: { Authorization: `Bearer ${API_TOKEN}` }
     });
-    if (!phoneRes.ok) {
-      const error = await phoneRes.text();
-      return res.status(500).json({ error: "Failed to fetch location phone numbers: " + error });
+    if (!locationRes.ok) {
+      const error = await locationRes.text();
+      return res.status(500).json({ error: "Failed to fetch location details: " + error });
     }
-    const phoneData = await phoneRes.json();
-    const smsNumberObj = phoneData.phoneNumbers?.find(num => num.type === "SMS" && num.phoneNumber);
-    if (!smsNumberObj) {
-      return res.status(400).json({ error: "No SMS phone number assigned to this subaccount." });
-    }
-    const fromNumber = smsNumberObj.phoneNumber;
+    const locationData = await locationRes.json();
+    const fromNumber = locationData.phone;
 
-    // 2. Fetch custom value for message
+    // 2. Fetch custom value for the message
     const customValueRes = await fetch(`${GHL_API_CUSTOM_VALUES_URL}?locationId=${LOCATION_ID}`, {
       method: "GET",
       headers: { Authorization: `Bearer ${API_TOKEN}`, "Content-Type": "application/json" }
