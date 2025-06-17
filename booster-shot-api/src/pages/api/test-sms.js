@@ -5,7 +5,7 @@ const GHL_API_MESSAGES_URL = "https://rest.gohighlevel.com/v1/messages";
 const GHL_API_LOCATION_URL = `https://rest.gohighlevel.com/v1/locations/${LOCATION_ID}`;
 const GHL_CUSTOM_VALUES_URL = "https://rest.gohighlevel.com/v1/custom-values";
 
-const BOOSTER_SHOT_CUSTOM_VALUE_NAME = "Booster Shot Message"; // updated to match your GHL custom value exactly
+const BOOSTER_SHOT_CUSTOM_VALUE_NAME = "Booster Shot Message"; // exact match
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -14,6 +14,8 @@ export default async function handler(req, res) {
   }
 
   const { phone, message } = req.body;
+
+  console.debug('[DEBUG] Incoming API request body:', req.body);
 
   if (!API_TOKEN || !LOCATION_ID) {
     console.debug("[DEBUG] Missing tokens", { API_TOKEN, LOCATION_ID });
@@ -96,6 +98,7 @@ export default async function handler(req, res) {
     const locationData = await locationRes.json();
     const fromNumber = locationData.phone;
     console.debug("[DEBUG] Location data:", locationData);
+    console.debug("[DEBUG] Location phone for sending:", fromNumber);
 
     // 5. Ensure contact exists (create or update)
     console.debug("[DEBUG] Creating/updating contact:", phone);
@@ -121,7 +124,12 @@ export default async function handler(req, res) {
     console.debug("[DEBUG] Contact creation/update response:", contactData);
 
     // 6. Send the SMS (GHL will use the assigned number automatically)
-    console.debug("[DEBUG] Sending SMS:", { phone, message, locationId: LOCATION_ID });
+    console.debug("[DEBUG] About to send SMS:", {
+      url: GHL_API_MESSAGES_URL,
+      payload: { phone, message, locationId: LOCATION_ID },
+      headers: { Authorization: `Bearer ${API_TOKEN?.slice(0,8) + '...'}`, "Content-Type": "application/json" }
+    });
+
     const smsRes = await fetch(GHL_API_MESSAGES_URL, {
       method: "POST",
       headers: {
@@ -135,20 +143,24 @@ export default async function handler(req, res) {
       })
     });
 
-    let smsResponseBody = null;
+    console.debug("[DEBUG] SMS response status:", smsRes.status, smsRes.statusText);
+    console.debug("[DEBUG] SMS response headers:", JSON.stringify([...smsRes.headers.entries()]));
+
+    let smsResponseBody = await smsRes.text();
+    console.debug("[DEBUG] SMS response body:", smsResponseBody);
+
     if (!smsRes.ok) {
-      smsResponseBody = await smsRes.text();
-      console.error("[DEBUG] Failed to send test SMS:", smsResponseBody);
       return res.status(500).json({ 
         error: "Failed to send test SMS", 
         smsApiRaw: smsResponseBody,
-        customValueResult,
-        contactData
+        smsApiStatus: smsRes.status,
+        smsApiHeaders: [...smsRes.headers.entries()],
+        payload: { phone, message, locationId: LOCATION_ID }
       });
     } else {
-      smsResponseBody = await smsRes.json().catch(() => ({}));
+      smsResponseBody = JSON.parse(smsResponseBody);
     }
-    console.debug("[DEBUG] SMS send response:", smsResponseBody);
+    console.debug("[DEBUG] SMS send response (parsed):", smsResponseBody);
 
     // Return info back to the client
     return res.status(200).json({ 
