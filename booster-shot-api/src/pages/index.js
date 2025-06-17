@@ -1,5 +1,14 @@
 import { useEffect, useState } from 'react';
 
+// ForeverBooked brand colors:
+const COLOR_DARK = "#23243a"; // deep indigo
+const COLOR_CORAL = "#ff8e87"; // coral
+const COLOR_LIGHT_BG = "#fafbfc"; // soft background
+const COLOR_GRAY = "#e5e7eb";
+const COLOR_WHITE = "#fff";
+const COLOR_SUCCESS = "#28a745";
+const COLOR_PRIMARY = COLOR_DARK;
+
 const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzkVfD4fEUHuGryVKiRR_SKtWeyMFCkxTyGeAKPlaY0yR5XJq_0xuYYEbA6v3odZeMKHA/exec";
 
 export default function ContactList() {
@@ -332,297 +341,406 @@ export default function ContactList() {
     return null;
   };
 
+  // --- Styles ---
+  const styles = {
+    main: {
+      padding: '40px 0',
+      fontFamily: 'Inter, Arial, sans-serif',
+      background: COLOR_LIGHT_BG,
+      minHeight: '100vh',
+      color: COLOR_DARK,
+      transition: 'background 0.2s'
+    },
+    card: {
+      background: COLOR_WHITE,
+      borderRadius: '18px',
+      boxShadow: '0 4px 16px rgba(35,36,58,0.07)',
+      padding: '36px 38px',
+      maxWidth: 700,
+      margin: '0 auto 40px auto',
+      border: `1.5px solid ${COLOR_GRAY}`,
+    },
+    logo: {
+      width: 180,
+      display: 'block',
+      margin: '0 auto 18px auto',
+    },
+    title: {
+      color: COLOR_PRIMARY,
+      fontWeight: 900,
+      fontSize: '2.3rem',
+      marginBottom: '10px',
+      letterSpacing: '-1.5px',
+    },
+    subtitle: {
+      color: '#6d6d7b',
+      fontSize: '1.09rem',
+      marginBottom: '22px',
+      fontWeight: 500,
+    },
+    label: {
+      fontWeight: 600,
+      color: COLOR_PRIMARY,
+      marginBottom: '6px',
+      display: 'block',
+    },
+    select: {
+      width: '100%',
+      padding: '11px',
+      borderRadius: '8px',
+      border: `1.8px solid ${COLOR_GRAY}`,
+      fontSize: '1.04rem',
+      marginBottom: '18px',
+      background: COLOR_LIGHT_BG,
+      color: COLOR_DARK,
+      outline: 'none',
+      transition: 'border-color 0.2s',
+    },
+    textarea: {
+      width: '100%',
+      minHeight: '86px',
+      borderRadius: '8px',
+      padding: '10px',
+      border: `1.7px solid ${COLOR_GRAY}`,
+      fontSize: '1rem',
+      background: COLOR_LIGHT_BG,
+      color: COLOR_DARK,
+      marginTop: '4px',
+      marginBottom: '18px',
+      outline: 'none',
+      transition: 'border-color 0.2s',
+    },
+    buttonPrimary: {
+      width: '100%',
+      padding: '14px 0',
+      background: COLOR_CORAL,
+      color: COLOR_WHITE,
+      fontWeight: 700,
+      border: 'none',
+      borderRadius: '8px',
+      fontSize: '1.1rem',
+      cursor: 'pointer',
+      marginBottom: '14px',
+      transition: 'background 0.18s, transform 0.15s',
+      boxShadow: '0 2px 8px rgba(255,142,135,0.07)',
+    },
+    buttonPrimaryDisabled: {
+      opacity: 0.5,
+      cursor: 'not-allowed',
+      pointerEvents: 'none',
+    },
+    buttonSecondary: {
+      background: COLOR_PRIMARY,
+      color: COLOR_WHITE,
+      borderRadius: '8px',
+      padding: '10px 20px',
+      fontWeight: 600,
+      border: 'none',
+      cursor: 'pointer',
+      fontSize: '1.04rem',
+      marginBottom: '16px',
+      transition: 'background 0.18s',
+    },
+    input: {
+      width: '100%',
+      padding: '10px',
+      borderRadius: '8px',
+      border: `1.7px solid ${COLOR_GRAY}`,
+      fontSize: '1rem',
+      marginBottom: '12px',
+      outline: 'none',
+      background: COLOR_LIGHT_BG,
+      color: COLOR_DARK,
+      transition: 'border-color 0.2s',
+    },
+    contactCard: {
+      borderRadius: '10px',
+      background: COLOR_WHITE,
+      boxShadow: '0 1px 5px rgba(35,36,58,0.04)',
+      padding: '16px 20px',
+      marginBottom: '10px',
+      display: 'flex',
+      alignItems: 'center',
+      border: `1px solid ${COLOR_GRAY}`,
+      transition: 'box-shadow 0.16s',
+    },
+    checkbox: {
+      accentColor: COLOR_CORAL,
+      marginRight: '18px',
+      width: 22,
+      height: 22,
+      cursor: 'pointer',
+    },
+    tag: {
+      display: 'inline-block',
+      fontSize: '0.93rem',
+      color: COLOR_CORAL,
+      background: '#fff2f1',
+      borderRadius: '4px',
+      padding: '2px 8px',
+      marginRight: '7px',
+      marginTop: '4px',
+    },
+    debugSection: {
+      background: '#f3f6fa',
+      borderRadius: '8px',
+      padding: '12px 15px',
+      marginBottom: '18px',
+      fontSize: '0.97rem',
+      color: COLOR_DARK,
+      border: `1px solid ${COLOR_GRAY}`,
+    },
+    tagFilterRow: {
+      display: 'flex',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: '14px',
+      marginBottom: '12px',
+      maxWidth: 530,
+    },
+    pagination: {
+      marginTop: 18,
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    rateLimit: {
+      background: '#fff2f2',
+      color: '#d43636',
+      border: `1.5px solid #d43636`,
+      padding: '16px',
+      borderRadius: '10px',
+      marginBottom: '18px',
+      fontWeight: 600,
+    },
+    countText: { color: COLOR_PRIMARY, fontWeight: 700 },
+    launchInfo: { marginTop: 14, fontSize: 13, color: '#888' },
+  };
+
   return (
-    <div style={{ padding: '20px', fontFamily: 'Arial' }}>
-      <h1>🚀 Booster Shot Campaign Launcher</h1>
+    <div style={styles.main}>
+      <img src="https://foreverbooked.com/wp-content/uploads/2022/03/LogoMark-ForeverBooked-Dark.png" alt="foreverbooked logo" style={styles.logo} />
 
-      {locationId ? (
-        <>
-          <p><strong>Subaccount ID:</strong> {locationId}</p>
+      <div style={styles.card}>
+        <div style={styles.title}>Booster Shot Campaign Launcher</div>
+        <div style={styles.subtitle}>Send optimized, branded SMS campaigns to your contacts in style.</div>
 
-          {/* ----- FORM SECTION WITH THE ONLY LAUNCH CAMPAIGN BUTTON ----- */}
-          <div
-            style={{
-              background: '#f8f9fa',
-              border: '1px solid #ddd',
-              padding: '20px',
-              borderRadius: '6px',
-              marginBottom: '20px',
-              maxWidth: 600
-            }}
-          >
-            <div style={{ marginBottom: '16px' }}>
-              <label>
-                <strong>Booster Shot message Selection</strong>&nbsp;
-                <select
-                  value={boosterShotMessage}
-                  onChange={e => setBoosterShotMessage(e.target.value)}
-                  style={{ width: '60%', padding: '6px' }}
-                >
-                  <option value="">-- Select Booster Shot --</option>
-                  {offerCategories.map(opt => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </select>
-              </label>
+        {locationId ? (
+          <>
+            <div style={{marginBottom: 20}}>
+              <span style={{fontWeight: 600, color: COLOR_PRIMARY}}>Subaccount ID:</span>
+              &nbsp;{locationId}
             </div>
 
-            <div style={{ marginBottom: '16px' }}>
-              <label>
-                <strong>Select Campaign</strong>&nbsp;
-                <select
-                  value={campaign}
-                  onChange={e => setCampaign(e.target.value)}
-                  style={{ width: '60%', padding: '6px' }}
-                  disabled={!boosterShotMessage}
-                >
-                  <option value="">-- Select Campaign --</option>
-                  {campaignNames.map(opt => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </select>
-              </label>
-            </div>
+            <div>
+              <label style={styles.label}>Booster Shot message Selection</label>
+              <select
+                value={boosterShotMessage}
+                onChange={e => setBoosterShotMessage(e.target.value)}
+                style={styles.select}
+              >
+                <option value="">-- Select Booster Shot --</option>
+                {offerCategories.map(opt => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
 
-            <div style={{ marginBottom: '16px' }}>
-              <label>
-                <strong>Your SMS message goes here</strong>
-                <textarea
-                  placeholder="Type your SMS/Text here..."
-                  value={smsMessage}
-                  onChange={e => setSmsMessage(e.target.value)}
-                  style={{ width: '100%', height: '80px', marginTop: '6px', padding: '8px' }}
-                />
-              </label>
-            </div>
+              <label style={styles.label}>Select Campaign</label>
+              <select
+                value={campaign}
+                onChange={e => setCampaign(e.target.value)}
+                style={styles.select}
+                disabled={!boosterShotMessage}
+              >
+                <option value="">-- Select Campaign --</option>
+                {campaignNames.map(opt => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
 
-            {/* --- OPTIMIZE & TEST SMS SECTION --- */}
-            <div style={{ marginBottom: '12px' }}>
+              <label style={styles.label}>Your SMS message goes here</label>
+              <textarea
+                placeholder="Type your SMS/Text here..."
+                value={smsMessage}
+                onChange={e => setSmsMessage(e.target.value)}
+                style={styles.textarea}
+              />
+
               <button
                 onClick={handleOptimizeAI}
                 disabled={optimizing || !smsMessage}
                 style={{
-                  width: '100%',
-                  padding: '10px',
-                  background: '#ffae42',
-                  color: '#222',
-                  border: 'none',
-                  borderRadius: '4px',
-                  fontWeight: 600,
-                  marginBottom: '10px',
-                  cursor: optimizing || !smsMessage ? 'not-allowed' : 'pointer'
+                  ...styles.buttonPrimary,
+                  ...(optimizing || !smsMessage ? styles.buttonPrimaryDisabled : {})
                 }}
               >
                 {optimizing ? 'Optimizing...' : '🤖 Optimize Using AI'}
               </button>
-              <div style={{ display: 'flex', gap: 8 }}>
+
+              <div style={{ display: 'flex', gap: 12, marginBottom: 18 }}>
                 <input
                   type="text"
                   placeholder="Enter phone number"
                   value={testPhone}
                   onChange={e => setTestPhone(e.target.value)}
-                  style={{
-                    flex: 1,
-                    padding: '8px',
-                    border: '1px solid #ccc',
-                    borderRadius: '4px'
-                  }}
+                  style={styles.input}
                 />
                 <button
                   onClick={handleSendTest}
                   disabled={sendingTest || !smsMessage || !testPhone}
                   style={{
-                    padding: '8px 16px',
-                    background: '#0070f3',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '4px',
-                    fontWeight: 600,
-                    cursor: sendingTest || !smsMessage || !testPhone ? 'not-allowed' : 'pointer'
+                    ...styles.buttonSecondary,
+                    background: sendingTest ? '#bbb' : COLOR_PRIMARY,
+                    opacity: sendingTest || !smsMessage || !testPhone ? 0.6 : 1
                   }}
                 >
                   {sendingTest ? 'Sending...' : 'Send Test Message'}
                 </button>
               </div>
+
+              <button
+                onClick={handleLaunchCampaign}
+                disabled={campaignLoading || selectedContacts.size === 0 || !!rateLimitError}
+                style={{
+                  ...styles.buttonPrimary,
+                  background: COLOR_SUCCESS,
+                  ...(campaignLoading || selectedContacts.size === 0 || !!rateLimitError ? styles.buttonPrimaryDisabled : {})
+                }}
+              >
+                {campaignLoading ? 'Launching...' : '🎯 Launch Campaign'}
+              </button>
+              <div style={styles.launchInfo}>
+                <em>Select contacts below before clicking Launch Campaign</em>
+              </div>
             </div>
-            {/* ---- END OPTIMIZE & TEST SMS SECTION ---- */}
 
             <button
-              onClick={handleLaunchCampaign}
-              disabled={campaignLoading || selectedContacts.size === 0 || !!rateLimitError}
+              onClick={handleLoadContacts}
+              disabled={loading}
               style={{
-                marginTop: '10px',
-                padding: '10px 24px',
-                fontSize: '16px',
-                backgroundColor: '#28a745',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: selectedContacts.size > 0 && !rateLimitError ? 'pointer' : 'not-allowed',
-                width: '100%'
+                ...styles.buttonSecondary,
+                width: '100%',
+                marginTop: 26,
+                marginBottom: 10,
+                background: loading ? '#bbb' : COLOR_PRIMARY,
+                opacity: loading ? 0.7 : 1
               }}
             >
-              {campaignLoading ? 'Launching...' : '🎯 Launch Campaign'}
+              {loading ? 'Loading...' : 'Select Campaign Contacts'}
             </button>
-            <div style={{ marginTop: 10, fontSize: 13 }}>
-              <em>Select contacts below before clicking Launch Campaign</em>
-            </div>
-          </div>
-          {/* ----- END OF FORM SECTION ----- */}
 
-          <button
-            onClick={handleLoadContacts}
-            disabled={loading}
-            style={{
-              marginBottom: '20px',
-              padding: '10px 20px',
-              fontSize: '16px',
-              backgroundColor: '#0070f3',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '5px',
-              cursor: 'pointer'
-            }}
-          >
-            {loading ? 'Loading...' : 'Select Campaign Contacts'}
-          </button>
-
-          {rateLimitError && (
-            <div style={{
-              background: '#ffe0e0',
-              color: '#c00',
-              border: '1px solid #c00',
-              padding: '12px',
-              marginBottom: '16px',
-              borderRadius: '4px'
-            }}>
-              <strong>🚦 Rate Limit Hit:</strong>
-              <div>{rateLimitError.message}</div>
-              {getResetTimeString() && (
-                <div>Try again in {getResetTimeString()}.</div>
-              )}
-            </div>
-          )}
-
-          {contactsLoaded && (
-            <>
-              <div style={{
-                background: '#f0f0f0',
-                padding: '10px',
-                marginBottom: '20px',
-                borderRadius: '4px'
-              }}>
-                <h4>Debug Info:</h4>
-                <pre>{JSON.stringify({
-                  currentPage,
-                  totalCount,
-                  hasNextPage: !!nextPageUrl,
-                  nextPageUrlSnippet: nextPageUrl?.split('startAfter=')[1]?.substring(0, 20),
-                  loading
-                }, null, 2)}</pre>
+            {rateLimitError && (
+              <div style={styles.rateLimit}>
+                <strong>🚦 Rate Limit Hit:</strong>
+                <div>{rateLimitError.message}</div>
+                {getResetTimeString() && (
+                  <div>Try again in {getResetTimeString()}.</div>
+                )}
               </div>
+            )}
 
-              <h3>Campaign Contacts</h3>
+            {contactsLoaded && (
+              <>
+                <div style={styles.debugSection}>
+                  <h4>Debug Info:</h4>
+                  <pre>{JSON.stringify({
+                    currentPage,
+                    totalCount,
+                    hasNextPage: !!nextPageUrl,
+                    nextPageUrlSnippet: nextPageUrl?.split('startAfter=')[1]?.substring(0, 20),
+                    loading
+                  }, null, 2)}</pre>
+                </div>
 
-              <div style={{
-                display: 'flex',
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: '10px',
-                marginBottom: '5px',
-                maxWidth: 450
-              }}>
-                {/* Tag Filter */}
-                <select
-                  value={selectedTag}
-                  onChange={e => setSelectedTag(e.target.value)}
-                  style={{
-                    minWidth: 110,
-                    padding: '7px',
-                    borderRadius: '4px',
-                    border: '1px solid #ccc'
-                  }}
-                >
-                  <option value="">All Tags</option>
-                  {tags.map(tag => (
-                    <option key={tag} value={tag}>{tag}</option>
-                  ))}
-                </select>
+                <h3 style={{marginTop: 20, marginBottom: 10, color: COLOR_PRIMARY}}>Campaign Contacts</h3>
 
-                {/* Search Box */}
-                <input
-                  type="text"
-                  placeholder="Search contacts by name, email, or phone..."
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '7px',
-                    borderRadius: '4px',
-                    border: '1px solid #ccc'
-                  }}
-                />
-              </div>
-
-              {/* Select All / Unselect All and Selected counter */}
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '5px'
-              }}>
-                <button onClick={toggleSelectAll}>
-                  {selectedContacts.size < filteredContacts().length ? 'Select All' : 'Unselect All'}
-                </button>
-                <div>Selected: {selectedContacts.size}</div>
-              </div>
-
-              {filteredContacts().map((contact) => (
-                <div key={contact.id} style={{ borderBottom: '1px solid #ddd', padding: '5px 0', display: 'flex', alignItems: 'center' }}>
+                <div style={styles.tagFilterRow}>
+                  <select
+                    value={selectedTag}
+                    onChange={e => setSelectedTag(e.target.value)}
+                    style={styles.select}
+                  >
+                    <option value="">All Tags</option>
+                    {tags.map(tag => (
+                      <option key={tag} value={tag}>{tag}</option>
+                    ))}
+                  </select>
                   <input
-                    type="checkbox"
-                    checked={selectedContacts.has(contact.id)}
-                    onChange={() => toggleSelectContact(contact.id)}
-                    style={{ marginRight: '10px' }}
+                    type="text"
+                    placeholder="Search contacts by name, email, or phone..."
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    style={styles.input}
                   />
-                  <div>
-                    <div><strong>{contact.firstName || ''} {contact.lastName || ''}</strong></div>
-                    <div>{contact.email || ''}</div>
-                    <div>{contact.phone || ''}</div>
-                    <div style={{ fontSize: '12px', color: '#999', marginTop: '2px' }}>
-                      {Array.isArray(contact.tags) && contact.tags.length > 0
-                        ? contact.tags.join(', ')
-                        : ''}
+                </div>
+
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '8px'
+                }}>
+                  <button style={styles.buttonSecondary} onClick={toggleSelectAll}>
+                    {selectedContacts.size < filteredContacts().length ? 'Select All' : 'Unselect All'}
+                  </button>
+                  <div style={styles.countText}>Selected: {selectedContacts.size}</div>
+                </div>
+
+                {filteredContacts().map((contact) => (
+                  <div key={contact.id} style={styles.contactCard}>
+                    <input
+                      type="checkbox"
+                      checked={selectedContacts.has(contact.id)}
+                      onChange={() => toggleSelectContact(contact.id)}
+                      style={styles.checkbox}
+                    />
+                    <div>
+                      <div style={{fontWeight: 700, fontSize: '1.09rem'}}>
+                        {contact.firstName || ''} {contact.lastName || ''}
+                      </div>
+                      <div style={{color: '#8b8b99', fontSize: '0.98rem'}}>{contact.email || ''}</div>
+                      <div style={{color: '#8b8b99', fontSize: '0.98rem'}}>{contact.phone || ''}</div>
+                      <div style={{ fontSize: '12px', color: COLOR_CORAL, marginTop: '2px' }}>
+                        {Array.isArray(contact.tags) && contact.tags.length > 0
+                          ? contact.tags.map(tag => (
+                            <span key={tag} style={styles.tag}>{tag}</span>
+                          ))
+                          : ''}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
 
-              <div style={{ marginTop: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <button onClick={handlePreviousPage} disabled={currentPage === 1 || loading}>
-                  Previous
-                </button>
-                <div>Page {currentPage} of {Math.ceil(totalCount / limit)}</div>
-                <button
-                  onClick={handleNextPage}
-                  disabled={!nextPageUrl || loading}
-                  style={{
-                    backgroundColor: nextPageUrl ? '#0070f3' : '#ccc',
-                    color: '#fff',
-                    border: 'none',
-                    padding: '8px 16px',
-                    cursor: nextPageUrl ? 'pointer' : 'default'
-                  }}
-                >
-                  Next
-                </button>
-              </div>
-            </>
-          )}
-        </>
-      ) : (
-        <p>Please provide a location_id URL parameter.</p>
-      )}
+                <div style={styles.pagination}>
+                  <button
+                    style={styles.buttonSecondary}
+                    onClick={handlePreviousPage}
+                    disabled={currentPage === 1 || loading}
+                  >
+                    Previous
+                  </button>
+                  <div style={{fontWeight: 600}}>
+                    Page {currentPage} of {Math.ceil(totalCount / limit)}
+                  </div>
+                  <button
+                    style={{
+                      ...styles.buttonSecondary,
+                      background: nextPageUrl ? COLOR_CORAL : '#bbb',
+                      cursor: nextPageUrl ? 'pointer' : 'not-allowed'
+                    }}
+                    onClick={handleNextPage}
+                    disabled={!nextPageUrl || loading}
+                  >
+                    Next
+                  </button>
+                </div>
+              </>
+            )}
+          </>
+        ) : (
+          <p>Please provide a location_id URL parameter.</p>
+        )}
+      </div>
     </div>
   );
 }
