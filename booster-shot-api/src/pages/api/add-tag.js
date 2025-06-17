@@ -4,8 +4,8 @@ const GHL_CUSTOM_VALUES_URL = "https://rest.gohighlevel.com/v1/custom-values";
 const BATCH_SIZE = 100;      // GHL burst limit per 10 seconds
 const BATCH_INTERVAL = 10_000; // 10 seconds in ms
 
-// Custom Value ID for "Booster shot message"
-const BOOSTER_SHOT_MESSAGE_ID = "ihlURpt2R0a74k2nCB0i";
+// The name of your custom value, change if needed
+const BOOSTER_SHOT_CUSTOM_VALUE_NAME = "Booster shot message";
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -75,27 +75,49 @@ export default async function handler(req, res) {
     }
   }
 
-  // Set Custom Value for Booster Shot Message (location-wide)
+  // Set Custom Value for Booster Shot Message (location-wide), dynamically get the ID
   let customValueResult = null;
   if (boosterShotMessage && locationId) {
     try {
-      const customValueRes = await fetch(`${GHL_CUSTOM_VALUES_URL}/${BOOSTER_SHOT_MESSAGE_ID}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${GHL_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          value: boosterShotMessage,
-          locationId
-        })
+      // 1. Fetch all custom values for the account
+      const customValuesRes = await fetch(GHL_CUSTOM_VALUES_URL, {
+        headers: { 'Authorization': `Bearer ${GHL_API_KEY}` }
       });
-
-      if (!customValueRes.ok) {
-        const errData = await customValueRes.json().catch(() => ({}));
-        customValueResult = { success: false, error: errData.error || customValueRes.statusText };
+      if (!customValuesRes.ok) {
+        const error = await customValuesRes.text();
+        customValueResult = { success: false, error: "Failed to fetch custom values: " + error };
       } else {
-        customValueResult = { success: true };
+        const customValuesData = await customValuesRes.json();
+        // 2. Find the custom value by name (case-insensitive)
+        const customValue = customValuesData.customValues.find(
+          v => v.name.trim().toLowerCase() === BOOSTER_SHOT_CUSTOM_VALUE_NAME.toLowerCase()
+        );
+        if (!customValue) {
+          customValueResult = {
+            success: false,
+            error: `Custom value "${BOOSTER_SHOT_CUSTOM_VALUE_NAME}" not found`
+          };
+        } else {
+          // 3. Update the custom value
+          const customValueRes = await fetch(`${GHL_CUSTOM_VALUES_URL}/${customValue.id}`, {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${GHL_API_KEY}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              value: boosterShotMessage,
+              locationId
+            })
+          });
+
+          if (!customValueRes.ok) {
+            const errData = await customValueRes.json().catch(() => ({}));
+            customValueResult = { success: false, error: errData.error || customValueRes.statusText };
+          } else {
+            customValueResult = { success: true };
+          }
+        }
       }
     } catch (err) {
       customValueResult = { success: false, error: err.message || 'Unknown error' };
