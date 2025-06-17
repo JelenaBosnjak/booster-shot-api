@@ -1,9 +1,38 @@
 import { useEffect, useState } from 'react';
 
+// Replace with your actual Google Sheets AppScript URL
 const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzkVfD4fEUHuGryVKiRR_SKtWeyMFCkxTyGeAKPlaY0yR5XJq_0xuYYEbA6v3odZeMKHA/exec";
 
+// Utility to always get the latest location_id from the URL
+function useLocationId() {
+  const [locationId, setLocationId] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('location_id');
+  });
+
+  useEffect(() => {
+    // Polling for location_id changes in the URL
+    let lastId = locationId;
+    const getLocationId = () => {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('location_id');
+    };
+    const interval = setInterval(() => {
+      const newId = getLocationId();
+      if (newId !== lastId) {
+        setLocationId(newId);
+        lastId = newId;
+      }
+    }, 500);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line
+  }, []);
+
+  return locationId;
+}
+
 export default function ContactList() {
-  const [locationId, setLocationId] = useState(null);
+  const locationId = useLocationId();
   const [contacts, setContacts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedContacts, setSelectedContacts] = useState(new Set());
@@ -16,7 +45,7 @@ export default function ContactList() {
   const [debugInfo, setDebugInfo] = useState({});
   const [campaignLoading, setCampaignLoading] = useState(false);
   const [rateLimitError, setRateLimitError] = useState(null);
-  const [testDebug, setTestDebug] = useState(null); // For SMS debug info
+  const [testDebug, setTestDebug] = useState(null);
 
   // --- Booster shot/campaign/message selection from Google Sheet ---
   const [boosterShotMessage, setBoosterShotMessage] = useState('');
@@ -36,11 +65,7 @@ export default function ContactList() {
   const [testPhone, setTestPhone] = useState('');
   const [sendingTest, setSendingTest] = useState(false);
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    setLocationId(params.get('location_id'));
-  }, []);
-
+  // Fetch tags for the location
   useEffect(() => {
     async function fetchTags() {
       if (!locationId) return;
@@ -56,6 +81,7 @@ export default function ContactList() {
     fetchTags();
   }, [locationId]);
 
+  // Fetch offers from Google Sheet
   useEffect(() => {
     fetch(WEB_APP_URL)
       .then(res => res.json())
@@ -170,7 +196,7 @@ export default function ContactList() {
     }
   };
 
-  // --- AI Optimize Handler: send to webhook only, no polling ---
+  // --- AI Optimize Handler ---
   const handleOptimizeAI = async () => {
     if (!smsMessage) {
       alert("Please enter a message to optimize.");
@@ -220,9 +246,8 @@ export default function ContactList() {
         body: JSON.stringify({ message: smsMessage, phone: testPhone })
       });
       const data = await res.json();
-      setTestDebug(data); // set debug info always
+      setTestDebug(data);
       if (!res.ok) {
-        // Show all debug info in a nice way
         alert(
           "Test SMS failed!\n" +
           (data.error ? `Error: ${data.error}\n` : "") +
