@@ -4,7 +4,9 @@ const GHL_API_CONTACTS_URL = "https://rest.gohighlevel.com/v1/contacts";
 const GHL_API_MESSAGES_URL = "https://rest.gohighlevel.com/v1/messages";
 const GHL_API_LOCATION_URL = `https://rest.gohighlevel.com/v1/locations/${LOCATION_ID}`;
 const GHL_CUSTOM_VALUES_URL = "https://rest.gohighlevel.com/v1/custom-values";
-const BOOSTER_SHOT_MESSAGE_ID = "ihlURpt2R0a74k2nCB0i"; // Use your actual custom value ID here
+
+// The name of your custom value, change if needed
+const BOOSTER_SHOT_CUSTOM_VALUE_NAME = "Booster shot message";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -24,10 +26,31 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. Update the custom value "Booster Shot Message"
+    // 1. Get all custom values
+    const customValuesRes = await fetch(GHL_CUSTOM_VALUES_URL, {
+      headers: { Authorization: `Bearer ${API_TOKEN}` }
+    });
+    if (!customValuesRes.ok) {
+      const error = await customValuesRes.text();
+      return res.status(500).json({ error: "Failed to fetch custom values: " + error });
+    }
+    const customValuesData = await customValuesRes.json();
+    // 2. Find the custom value by name (case-insensitive)
+    const customValue = customValuesData.customValues.find(
+      v => v.name.trim().toLowerCase() === BOOSTER_SHOT_CUSTOM_VALUE_NAME.toLowerCase()
+    );
+    if (!customValue) {
+      return res.status(400).json({
+        error: `Custom value "${BOOSTER_SHOT_CUSTOM_VALUE_NAME}" not found`,
+        availableNames: customValuesData.customValues.map(v => v.name)
+      });
+    }
+    const customValueId = customValue.id;
+
+    // 3. Update the custom value
     let customValueResult = null;
     try {
-      const customValueRes = await fetch(`${GHL_CUSTOM_VALUES_URL}/${BOOSTER_SHOT_MESSAGE_ID}`, {
+      const customValueRes = await fetch(`${GHL_CUSTOM_VALUES_URL}/${customValueId}`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${API_TOKEN}`,
@@ -48,7 +71,7 @@ export default async function handler(req, res) {
       customValueResult = { success: false, error: err.message || "Unknown error" };
     }
 
-    // 2. Fetch subaccount's main phone number (for display/logging)
+    // 4. Fetch subaccount's main phone number (for display/logging)
     const locationRes = await fetch(GHL_API_LOCATION_URL, {
       method: "GET",
       headers: { Authorization: `Bearer ${API_TOKEN}` }
@@ -60,7 +83,7 @@ export default async function handler(req, res) {
     const locationData = await locationRes.json();
     const fromNumber = locationData.phone;
 
-    // 3. Ensure contact exists (create or update)
+    // 5. Ensure contact exists (create or update)
     const contactRes = await fetch(GHL_API_CONTACTS_URL, {
       method: "POST",
       headers: {
@@ -72,13 +95,12 @@ export default async function handler(req, res) {
         locationId: LOCATION_ID
       })
     });
-
     if (!contactRes.ok) {
       const error = await contactRes.text();
       return res.status(500).json({ error: "Failed to create or update contact: " + error, customValueResult });
     }
 
-    // 4. Send the SMS (GHL will use the assigned number automatically)
+    // 6. Send the SMS (GHL will use the assigned number automatically)
     const smsRes = await fetch(GHL_API_MESSAGES_URL, {
       method: "POST",
       headers: {
