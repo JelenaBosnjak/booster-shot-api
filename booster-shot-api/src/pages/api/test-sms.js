@@ -4,8 +4,14 @@ const GHL_API_CONTACTS_URL = "https://rest.gohighlevel.com/v1/contacts";
 const GHL_API_MESSAGES_URL = "https://rest.gohighlevel.com/v1/messages";
 const GHL_API_LOCATION_URL = `https://rest.gohighlevel.com/v1/locations/${LOCATION_ID}`;
 const GHL_CUSTOM_VALUES_URL = "https://rest.gohighlevel.com/v1/custom-values";
+const GHL_API_MESSAGESEARCH_URL = "https://rest.gohighlevel.com/v1/messages/search";
 
 const BOOSTER_SHOT_CUSTOM_VALUE_NAME = "Booster Shot Message"; // exact match
+
+// Helper to wait (ms)
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -146,30 +152,82 @@ export default async function handler(req, res) {
     console.debug("[DEBUG] SMS response status:", smsRes.status, smsRes.statusText);
     console.debug("[DEBUG] SMS response headers:", JSON.stringify([...smsRes.headers.entries()]));
 
-    let smsResponseBody = await smsRes.text();
-    console.debug("[DEBUG] SMS response body:", smsResponseBody);
+    let smsResponseBodyRaw = await smsRes.text();
+    console.debug("[DEBUG] SMS response body:", smsResponseBodyRaw);
+
+    // In most GHL setups, the /v1/messages response doesn't directly provide a message ID.
+    // We'll search for the most recent message to that number and try to confirm delivery status.
+
+    let smsStatusInfo = null;
+
+    if (smsRes.ok) {
+      // Wait a moment to let GHL process and index the message
+      await delay(2500);
+
+      // Message search endpoint (filters: locationId, phone)
+      // Best effort: get most recent message to this phone for this location
+      let searchUrl = `${GHL_API_MESSAGESEARCH_URL}?locationId=${encodeURIComponent(LOCATION_ID)}&toNumber=${encodeURIComponent(phone)}&limit=3`;
+
+      console.debug("[DEBUG] Checking SMS delivery status via:", searchUrl);
+      const statusRes = await fetch(searchUrl, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${API_TOKEN}` }
+      });
+      let statusResBody = await statusRes.text();
+      try {
+        statusResBody = JSON.parse(statusResBody);
+      } catch {
+        // leave as text
+      }
+      console.debug("[DEBUG] Delivery status response:", statusResBody);
+
+      // Try to extract status for the most recent message
+      if (Array.isArray(statusResBody?.messages) && statusResBody.messages.length > 0) {
+        // Assume the most recent message matching our send
+        const msg = statusResBody.messages[0];
+        smsStatusInfo = {
+          id: msg.id,
+          status: msg.status,
+          deliveredAt: msg.deliveredAt,
+          sentAt: msg.createdAt,
+          to: msg.toNumber,
+          from: msg.fromNumber,
+          direction: msg.direction,
+          body: msg.body
+        };
+      } else {
+        smsStatusInfo = { raw: statusResBody };
+      }
+    }
 
     if (!smsRes.ok) {
-      return res.status(500).json({ 
-        error: "Failed to send test SMS", 
-        smsApiRaw: smsResponseBody,
+      return res.status(500).json({
+        error: "Failed to send test SMS",
+        smsApiRaw: smsResponseBodyRaw,
         smsApiStatus: smsRes.status,
         smsApiHeaders: [...smsRes.headers.entries()],
-        payload: { phone, message, locationId: LOCATION_ID }
+        payload: { phone, message, locationId: LOCATION_ID },
+        smsStatusInfo
       });
     } else {
-      smsResponseBody = JSON.parse(smsResponseBody);
-    }
-    console.debug("[DEBUG] SMS send response (parsed):", smsResponseBody);
+      let smsResponseBody = {};
+      try {
+        smsResponseBody = JSON.parse(smsResponseBodyRaw);
+      } catch {
+        smsResponseBody = smsResponseBodyRaw;
+      }
+      console.debug("[DEBUG] SMS send response (parsed):", smsResponseBody);
 
-    // Return info back to the client
-    return res.status(200).json({ 
-      success: true,
-      fromNumber,
-      customValueResult,
-      contactData,
-      smsApiResponse: smsResponseBody
-    });
+      // Return info back to the client, including message delivery status if found
+      return res.status(200).json({
+        success: true,
+        fromNumber,
+        customValueResult,
+        contactData,
+        smsApiResponse: smsResponseBody,
+        smsStatusInfo
+      });
+    }
   } catch (e) {
     console.error("[DEBUG] Server Error:", e);
     return res.status(500).json({ error: e.message || "Unknown error sending test SMS." });
