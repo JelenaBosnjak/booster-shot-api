@@ -1,33 +1,9 @@
 import { useEffect, useState } from 'react';
 
-// Custom hook to keep locationId in sync with the URL (safe for SSR)
-function useLocationId() {
-  const [locationId, setLocationId] = useState(null);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      setLocationId(params.get('location_id'));
-      let lastId = params.get('location_id');
-      const interval = setInterval(() => {
-        const newParams = new URLSearchParams(window.location.search);
-        const newId = newParams.get('location_id');
-        if (newId !== lastId) {
-          setLocationId(newId);
-          lastId = newId;
-        }
-      }, 500);
-      return () => clearInterval(interval);
-    }
-  }, []);
-
-  return locationId;
-}
-
 const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzkVfD4fEUHuGryVKiRR_SKtWeyMFCkxTyGeAKPlaY0yR5XJq_0xuYYEbA6v3odZeMKHA/exec";
 
 export default function ContactList() {
-  const locationId = useLocationId();
+  const [locationId, setLocationId] = useState(null);
   const [contacts, setContacts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedContacts, setSelectedContacts] = useState(new Set());
@@ -40,7 +16,6 @@ export default function ContactList() {
   const [debugInfo, setDebugInfo] = useState({});
   const [campaignLoading, setCampaignLoading] = useState(false);
   const [rateLimitError, setRateLimitError] = useState(null);
-  const [testDebug, setTestDebug] = useState(null);
 
   // --- Booster shot/campaign/message selection from Google Sheet ---
   const [boosterShotMessage, setBoosterShotMessage] = useState('');
@@ -60,7 +35,11 @@ export default function ContactList() {
   const [testPhone, setTestPhone] = useState('');
   const [sendingTest, setSendingTest] = useState(false);
 
-  // Fetch tags for the location
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setLocationId(params.get('location_id'));
+  }, []);
+
   useEffect(() => {
     async function fetchTags() {
       if (!locationId) return;
@@ -76,7 +55,6 @@ export default function ContactList() {
     fetchTags();
   }, [locationId]);
 
-  // Fetch offers from Google Sheet
   useEffect(() => {
     fetch(WEB_APP_URL)
       .then(res => res.json())
@@ -191,7 +169,7 @@ export default function ContactList() {
     }
   };
 
-  // --- AI Optimize Handler ---
+  // --- AI Optimize Handler: send to webhook only, no polling ---
   const handleOptimizeAI = async () => {
     if (!smsMessage) {
       alert("Please enter a message to optimize.");
@@ -224,7 +202,6 @@ export default function ContactList() {
 
   // --- Send Test Message Handler (calls backend) ---
   const handleSendTest = async () => {
-    setTestDebug(null);
     if (!testPhone) {
       alert("Enter a phone number.");
       return;
@@ -241,33 +218,13 @@ export default function ContactList() {
         body: JSON.stringify({ message: smsMessage, phone: testPhone })
       });
       const data = await res.json();
-      setTestDebug(data);
       if (!res.ok) {
-        alert(
-          "Test SMS failed!\n" +
-          (data.error ? `Error: ${data.error}\n` : "") +
-          (data.smsStep ? `Step: ${data.smsStep}\n` : "") +
-          (data.debugToken ? `DebugToken: ${data.debugToken}\n` : "") +
-          (data.smsStatus ? `SMS Status: ${data.smsStatus}\n` : "") +
-          (data.smsResponse ? `SMS Response: ${data.smsResponse}\n` : "") +
-          (data.details ? `Details: ${data.details}\n` : "") +
-          (data.customValueResult && !data.customValueResult.success 
-            ? `Custom Value Error: ${JSON.stringify(data.customValueResult, null, 2)}\n` 
-            : ""
-          )
-        );
+        alert(data.error || "Failed to send test SMS!");
       } else {
-        let msg = "Test SMS sent!\n";
-        if (data.fromNumber) msg += `From number: ${data.fromNumber}\n`;
-        if (data.debugToken) msg += `DebugToken: ${data.debugToken}\n`;
-        if (data.customValueResult && !data.customValueResult.success) {
-          msg += "Warning: Custom Value update failed: " + JSON.stringify(data.customValueResult, null, 2) + "\n";
-        }
-        if (data.smsApiResponse) msg += `SMS API Response: ${data.smsApiResponse}\n`;
-        alert(msg);
+        alert("Test SMS sent!");
       }
     } catch (err) {
-      alert("Failed to send test SMS. Error: " + err.message);
+      alert("Failed to send test SMS.");
     } finally {
       setSendingTest(false);
     }
@@ -382,6 +339,8 @@ export default function ContactList() {
       {locationId ? (
         <>
           <p><strong>Subaccount ID:</strong> {locationId}</p>
+
+          {/* ----- FORM SECTION WITH THE ONLY LAUNCH CAMPAIGN BUTTON ----- */}
           <div
             style={{
               background: '#f8f9fa',
@@ -485,12 +444,8 @@ export default function ContactList() {
                   {sendingTest ? 'Sending...' : 'Send Test Message'}
                 </button>
               </div>
-              {testDebug && (
-                <pre style={{ marginTop: 10, background: "#f9f9f9", color: "#333", fontSize: 12, padding: 10, borderRadius: 6, border: "1px solid #eee", maxHeight: 250, overflow: "auto" }}>
-                  {JSON.stringify(testDebug, null, 2)}
-                </pre>
-              )}
             </div>
+            {/* ---- END OPTIMIZE & TEST SMS SECTION ---- */}
 
             <button
               onClick={handleLaunchCampaign}
@@ -513,6 +468,7 @@ export default function ContactList() {
               <em>Select contacts below before clicking Launch Campaign</em>
             </div>
           </div>
+          {/* ----- END OF FORM SECTION ----- */}
 
           <button
             onClick={handleLoadContacts}
