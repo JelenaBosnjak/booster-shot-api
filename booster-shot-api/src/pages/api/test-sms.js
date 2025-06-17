@@ -5,7 +5,7 @@ const GHL_API_MESSAGES_URL = "https://rest.gohighlevel.com/v1/messages";
 const GHL_API_LOCATION_URL = `https://rest.gohighlevel.com/v1/locations/${LOCATION_ID}`;
 const GHL_CUSTOM_VALUES_URL = "https://rest.gohighlevel.com/v1/custom-values";
 
-const BOOSTER_SHOT_CUSTOM_VALUE_NAME = "Booster shot message";
+const BOOSTER_SHOT_CUSTOM_VALUE_NAME = "Booster Shot Message"; // updated to match your GHL custom value exactly
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -42,7 +42,7 @@ export default async function handler(req, res) {
     const customValuesData = await customValuesRes.json();
     console.debug("[DEBUG] Custom values response:", customValuesData);
 
-    // 2. Find the custom value by name (case-insensitive)
+    // 2. Find the custom value by name (case-insensitive, but using exact spelling preferred)
     const customValue = customValuesData.customValues.find(
       v => v.name.trim().toLowerCase() === BOOSTER_SHOT_CUSTOM_VALUE_NAME.toLowerCase()
     );
@@ -110,12 +110,14 @@ export default async function handler(req, res) {
         locationId: LOCATION_ID
       })
     });
+    let contactData = null;
     if (!contactRes.ok) {
       const error = await contactRes.text();
       console.error("[DEBUG] Failed to create or update contact:", error);
       return res.status(500).json({ error: "Failed to create or update contact: " + error, customValueResult });
+    } else {
+      contactData = await contactRes.json().catch(() => ({}));
     }
-    const contactData = await contactRes.json();
     console.debug("[DEBUG] Contact creation/update response:", contactData);
 
     // 6. Send the SMS (GHL will use the assigned number automatically)
@@ -137,7 +139,12 @@ export default async function handler(req, res) {
     if (!smsRes.ok) {
       smsResponseBody = await smsRes.text();
       console.error("[DEBUG] Failed to send test SMS:", smsResponseBody);
-      return res.status(500).json({ error: "Failed to send test SMS: " + smsResponseBody, customValueResult });
+      return res.status(500).json({ 
+        error: "Failed to send test SMS", 
+        smsApiRaw: smsResponseBody,
+        customValueResult,
+        contactData
+      });
     } else {
       smsResponseBody = await smsRes.json().catch(() => ({}));
     }
