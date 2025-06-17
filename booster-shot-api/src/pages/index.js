@@ -1,35 +1,30 @@
 import { useEffect, useState } from 'react';
 
-// Replace with your actual Google Sheets AppScript URL
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzkVfD4fEUHuGryVKiRR_SKtWeyMFCkxTyGeAKPlaY0yR5XJq_0xuYYEbA6v3odZeMKHA/exec";
-
-// Utility to always get the latest location_id from the URL
+// Custom hook to keep locationId in sync with the URL (safe for SSR)
 function useLocationId() {
-  const [locationId, setLocationId] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('location_id');
-  });
+  const [locationId, setLocationId] = useState(null);
 
   useEffect(() => {
-    // Polling for location_id changes in the URL
-    let lastId = locationId;
-    const getLocationId = () => {
+    if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
-      return params.get('location_id');
-    };
-    const interval = setInterval(() => {
-      const newId = getLocationId();
-      if (newId !== lastId) {
-        setLocationId(newId);
-        lastId = newId;
-      }
-    }, 500);
-    return () => clearInterval(interval);
-    // eslint-disable-next-line
+      setLocationId(params.get('location_id'));
+      let lastId = params.get('location_id');
+      const interval = setInterval(() => {
+        const newParams = new URLSearchParams(window.location.search);
+        const newId = newParams.get('location_id');
+        if (newId !== lastId) {
+          setLocationId(newId);
+          lastId = newId;
+        }
+      }, 500);
+      return () => clearInterval(interval);
+    }
   }, []);
 
   return locationId;
 }
+
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzkVfD4fEUHuGryVKiRR_SKtWeyMFCkxTyGeAKPlaY0yR5XJq_0xuYYEbA6v3odZeMKHA/exec";
 
 export default function ContactList() {
   const locationId = useLocationId();
