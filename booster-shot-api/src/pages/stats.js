@@ -51,6 +51,7 @@ const current = {
   noResponse: 15,
   name: "Summer Glow 2025",
   date: "2025-06-10",
+  time: "15:30",
 };
 
 export default function StatusPage() {
@@ -70,10 +71,16 @@ export default function StatusPage() {
     header: {
       display: "flex",
       alignItems: "center",
+      justifyContent: "space-between",
       background: COLOR_WHITE,
       boxShadow: "0 2px 8px rgba(35,36,58,0.05)",
       padding: "16px 32px",
       borderBottom: `1.5px solid ${COLOR_GRAY}`,
+      gap: 18,
+    },
+    leftHeader: {
+      display: "flex",
+      alignItems: "center",
       gap: 18,
     },
     back: {
@@ -90,10 +97,16 @@ export default function StatusPage() {
     headTitle: {
       fontWeight: 900,
       fontSize: "1.45rem",
-      flex: 1,
       textAlign: "left",
       color: COLOR_PRIMARY,
       letterSpacing: "-1px",
+    },
+    logo: {
+      width: 110,
+      height: 44,
+      objectFit: "contain",
+      marginLeft: 18,
+      marginRight: 0,
     },
     tabRow: {
       display: "flex",
@@ -122,7 +135,6 @@ export default function StatusPage() {
       border: `1.5px solid ${COLOR_CORAL}`,
       borderBottom: "none",
     },
-    // Current campaign styles are unchanged...
     contentRow: {
       display: "flex",
       justifyContent: "center",
@@ -166,6 +178,16 @@ export default function StatusPage() {
       fontSize: "1.12rem",
       minWidth: 40,
       textAlign: "right",
+    },
+    campaignTimeRow: {
+      display: "flex",
+      justifyContent: "flex-end",
+      alignItems: "center",
+      marginBottom: "-20px",
+      marginRight: "12px",
+      fontSize: "1rem",
+      color: "#767676",
+      fontWeight: 600,
     },
     progressSection: {
       margin: "40px auto 36px auto",
@@ -219,7 +241,6 @@ export default function StatusPage() {
       outline: "none",
       letterSpacing: "-0.6px",
     },
-    // Previous campaign tab styles:
     prevDetails: {
       background: COLOR_WHITE,
       borderRadius: "18px",
@@ -355,12 +376,20 @@ export default function StatusPage() {
 
   return (
     <div style={styles.page}>
-      {/* Header */}
+      {/* Header with logo on right */}
       <div style={styles.header}>
-        <Link href="/" legacyBehavior>
-          <a style={styles.back}>&larr; Back</a>
-        </Link>
-        <span style={styles.headTitle}>Campaign Status Overview</span>
+        <div style={styles.leftHeader}>
+          <Link href="/" legacyBehavior>
+            <a style={styles.back}>&larr; Back</a>
+          </Link>
+          <span style={styles.headTitle}>Campaign Status Overview</span>
+        </div>
+        <img
+          src="/logo.png"
+          alt="Logo"
+          style={styles.logo}
+          onError={e => { e.currentTarget.src = "https://via.placeholder.com/120x44?text=Logo" }}
+        />
       </div>
 
       {/* Tabs */}
@@ -381,7 +410,13 @@ export default function StatusPage() {
 
       {activeTab === "current" ? (
         <>
-          {/* Current campaign layout as before */}
+          {/* Current campaign time at the top right above cards */}
+          <div style={styles.campaignTimeRow}>
+            <span>
+              <span style={{ fontWeight: 700, color: COLOR_CORAL }}>Campaign Time:</span>{" "}
+              {current.date} {current.time}
+            </span>
+          </div>
           <div style={styles.contentRow}>
             <div style={styles.card}>
               <div style={styles.cardTitle}>Previous Campaign</div>
@@ -490,7 +525,6 @@ export default function StatusPage() {
             </div>
           </div>
           <div style={styles.controlsRow}>
-            <button style={styles.controlBtn}>View Details</button>
             <button style={styles.controlBtn}>Export Report</button>
             <Link href="/campaign" legacyBehavior>
               <a style={styles.controlBtn}>Start New Campaign</a>
