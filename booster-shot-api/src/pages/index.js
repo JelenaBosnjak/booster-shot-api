@@ -76,7 +76,7 @@ export default function Dashboard() {
     },
   };
 
-  // You'll need this logic to add hover/active effects with inline styles
+  // Logic for hover/active effects
   const getButtonStyle = (btn) => ({
     ...styles.button,
     ...(active === btn && styles.buttonActive),
@@ -85,10 +85,10 @@ export default function Dashboard() {
   return (
     <div style={styles.main}>
       <img
-        src="/your-logo.png" // update this path after you upload the new logo to /public
-        alt="App Logo"
+        src="/logo.png" // Place your logo as booster-shot-api/public/logo.png
+        alt="Booster Shot Logo"
         style={styles.logo}
-        onError={e => e.target.src = "https://via.placeholder.com/180x80?text=Logo"}
+        onError={e => { e.currentTarget.src = "https://via.placeholder.com/180x80?text=Logo" }}
       />
       <div style={styles.title}>Booster Shot System</div>
       <div style={styles.buttonRow}>
