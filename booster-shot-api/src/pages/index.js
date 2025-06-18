@@ -1,14 +1,15 @@
 import Link from "next/link";
+import { useState } from "react";
 
-const COLOR_DARK = "#23243a"; // deep indigo
-const COLOR_CORAL = "#ff8e87"; // coral
-const COLOR_LIGHT_BG = "#fafbfc"; // soft background
-const COLOR_GRAY = "#e5e7eb";
+const COLOR_DARK = "#23243a";
+const COLOR_CORAL = "#ff8e87";
+const COLOR_LIGHT_BG = "#fafbfc";
 const COLOR_WHITE = "#fff";
-const COLOR_SUCCESS = "#28a745";
 const COLOR_PRIMARY = COLOR_DARK;
 
 export default function Dashboard() {
+  const [active, setActive] = useState("");
+
   const styles = {
     main: {
       minHeight: "100vh",
@@ -22,6 +23,10 @@ export default function Dashboard() {
     logo: {
       width: 180,
       marginBottom: 30,
+      objectFit: "contain",
+      borderRadius: 8,
+      boxShadow: "0 2px 16px rgba(35,36,58,0.06)",
+      background: "#eee",
     },
     title: {
       color: COLOR_PRIMARY,
@@ -31,6 +36,15 @@ export default function Dashboard() {
       letterSpacing: "-1.5px",
       textAlign: "center",
       lineHeight: 1.2,
+    },
+    buttonRow: {
+      display: "flex",
+      flexDirection: "row",
+      justifyContent: "center",
+      gap: "40px",
+      width: "100%",
+      maxWidth: 700,
+      marginTop: 20,
     },
     button: {
       width: 320,
@@ -42,37 +56,65 @@ export default function Dashboard() {
       border: "none",
       borderRadius: "14px",
       cursor: "pointer",
-      marginBottom: "32px",
       boxShadow: "0 4px 18px rgba(35,36,58,0.09)",
-      transition: "background 0.2s, transform 0.13s",
+      transition: "background 0.16s, transform 0.13s, box-shadow 0.18s",
       display: "block",
       textAlign: "center",
       outline: "none",
       textDecoration: "none",
       letterSpacing: "-0.5px",
     },
-    buttonSecondary: {
-      background: COLOR_DARK,
-      color: COLOR_WHITE,
-      marginBottom: 0,
+    buttonHover: {
+      background: "#fc6d66",
+      transform: "scale(1.04)",
+      boxShadow: "0 6px 24px rgba(35,36,58,0.13)",
+    },
+    buttonActive: {
+      background: "#e15d56",
+      transform: "scale(0.98)",
+      boxShadow: "0 2px 8px rgba(35,36,58,0.10)",
     },
   };
+
+  // You'll need this logic to add hover/active effects with inline styles
+  const getButtonStyle = (btn) => ({
+    ...styles.button,
+    ...(active === btn && styles.buttonActive),
+  });
 
   return (
     <div style={styles.main}>
       <img
-        src="https://foreverbooked.com/wp-content/uploads/2022/03/LogoMark-ForeverBooked-Dark.png"
-        alt="ForeverBooked Logo"
+        src="/your-logo.png" // update this path after you upload the new logo to /public
+        alt="App Logo"
         style={styles.logo}
+        onError={e => e.target.src = "https://via.placeholder.com/180x80?text=Logo"}
       />
       <div style={styles.title}>Booster Shot System</div>
-
-      <Link href="/stats" style={{ ...styles.button, ...styles.buttonSecondary }}>
-        <span>Campaing Status</span>
-      </Link>
-      <Link href="/campaign" style={styles.button}>
-        <span>Launch New Campaign</span>
-      </Link>
+      <div style={styles.buttonRow}>
+        <Link href="/stats" legacyBehavior>
+          <a
+            style={getButtonStyle("status")}
+            onMouseEnter={() => setActive("status")}
+            onMouseLeave={() => setActive("")}
+            onMouseDown={() => setActive("status")}
+            onMouseUp={() => setActive("")}
+          >
+            Campaign Status
+          </a>
+        </Link>
+        <Link href="/campaign" legacyBehavior>
+          <a
+            style={getButtonStyle("launch")}
+            onMouseEnter={() => setActive("launch")}
+            onMouseLeave={() => setActive("")}
+            onMouseDown={() => setActive("launch")}
+            onMouseUp={() => setActive("")}
+          >
+            Launch New Campaign
+          </a>
+        </Link>
+      </div>
     </div>
   );
 }
