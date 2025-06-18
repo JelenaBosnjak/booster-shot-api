@@ -44,6 +44,9 @@ export default function ContactList() {
   const [testPhone, setTestPhone] = useState('');
   const [sendingTest, setSendingTest] = useState(false);
 
+  // --- NEW: store the last optimized message for possible use elsewhere ---
+  const [optimizedMessage, setOptimizedMessage] = useState('');
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setLocationId(params.get('location_id'));
@@ -178,14 +181,10 @@ export default function ContactList() {
     }
   };
 
-  // --- AI Optimize Handler: send to webhook only, no polling ---
+  // --- AI Optimize Handler: now uses OpenAI and sets smsMessage and optimizedMessage ---
   const handleOptimizeAI = async () => {
     if (!smsMessage) {
       alert("Please enter a message to optimize.");
-      return;
-    }
-    if (!locationId) {
-      alert("No location ID provided.");
       return;
     }
     setOptimizing(true);
@@ -193,7 +192,7 @@ export default function ContactList() {
       const res = await fetch("/api/optimize-sms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: smsMessage, locationId }),
+        body: JSON.stringify({ message: smsMessage })
       });
       const data = await res.json();
       if (!res.ok) {
@@ -201,7 +200,9 @@ export default function ContactList() {
         setOptimizing(false);
         return;
       }
-      alert("Optimization request sent!");
+      // Set optimized message in the textarea and booster shot state
+      setSmsMessage(data.optimized);
+      setOptimizedMessage(data.optimized);
     } catch (err) {
       alert("Failed to optimize SMS.");
     } finally {
@@ -262,7 +263,7 @@ export default function ContactList() {
         body: JSON.stringify({
           contactIds: Array.from(selectedContacts),
           tag: 'booster shot',
-          boosterShotMessage: smsMessage,
+          boosterShotMessage: smsMessage, // will be the optimized message if optimized
           locationId
         })
       });

@@ -1,48 +1,69 @@
 export default async function handler(req, res) {
-  // --- POST HANDLER: Send to webhook only ---
   if (req.method === "POST") {
-    // Parse body for Next.js edge or node runtimes
-    let message, locationId;
+    let message;
     try {
-      // If body is already parsed (Node.js runtime)
       if (req.body && typeof req.body === "object") {
-        ({ message, locationId } = req.body);
+        ({ message } = req.body);
       } else {
-        // If body is a string (Edge runtime)
-        ({ message, locationId } = JSON.parse(req.body || "{}"));
+        ({ message } = JSON.parse(req.body || "{}"));
       }
     } catch {
       return res.status(400).json({ error: "Invalid JSON" });
     }
 
-    const WEBHOOK_URL = "https://services.leadconnectorhq.com/hooks/QoVl53giULLNf7iUH7LE/webhook-trigger/b4ca2252-b3f8-4eee-991c-cd468b2a3b18";
-
-    if (!message || !locationId) {
-      return res.status(400).json({ error: "Missing message or locationId." });
+    if (!message) {
+      return res.status(400).json({ error: "Missing message." });
     }
 
+    // Your custom prompt
+    const prompt = `
+Make this message easy to read, format it, add spaces and don't change the values or text in the message.
+
+Message:
+${message}
+`;
+
     try {
-      const webhookRes = await fetch(WEBHOOK_URL, {
+      const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message, locationId }),
+        headers: {
+          "Authorization": `Bearer ${process.env.OPEN_AI_TOKEN}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: [
+            {
+              role: "system",
+              content: "You are an expert at formatting SMS for clarity and readability, without altering content."
+            },
+            {
+              role: "user",
+              content: prompt
+            }
+          ],
+          max_tokens: 256,
+          temperature: 0.3
+        }),
       });
 
-      if (!webhookRes.ok) {
-        const error = await webhookRes.text();
-        return res
-          .status(500)
-          .json({ error: "Failed to send to webhook: " + error });
+      if (!openaiRes.ok) {
+        const error = await openaiRes.text();
+        return res.status(500).json({ error: "OpenAI error: " + error });
       }
 
-      return res.status(200).json({ success: true });
+      const data = await openaiRes.json();
+      const optimized = data.choices?.[0]?.message?.content?.trim();
+
+      if (!optimized) {
+        return res.status(500).json({ error: "No optimization returned by OpenAI." });
+      }
+
+      return res.status(200).json({ optimized });
     } catch (e) {
-      return res
-        .status(500)
-        .json({ error: e.message || "Unknown error sending to webhook." });
+      return res.status(500).json({ error: e.message || "Unknown error with OpenAI." });
     }
   }
 
-  // --- GET HANDLER: Not needed for now ---
   res.status(405).json({ error: "Method not allowed" });
 }
