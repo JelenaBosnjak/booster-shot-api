@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const COLOR_CORAL = "#ff8e87";
 const COLOR_DARK = "#23243a";
@@ -58,6 +58,28 @@ export default function StatusPage() {
   const [activeTab, setActiveTab] = useState("current"); // "previous" or "current"
   const [selectedPrevIndex, setSelectedPrevIndex] = useState(2); // default to "Spring Glow Campaign"
   const selectedPrev = previousCampaigns[selectedPrevIndex];
+
+  // --- Campaign Status from API ---
+  const [boosterStats, setBoosterStats] = useState({ previous: 0, current: 0 });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchStats() {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/get-campaign-status");
+        const data = await res.json();
+        setBoosterStats({
+          previous: data.previous,
+          current: data.current,
+        });
+      } catch (err) {
+        setBoosterStats({ previous: 0, current: 0 });
+      }
+      setLoading(false);
+    }
+    fetchStats();
+  }, []);
 
   const styles = {
     page: {
@@ -414,121 +436,28 @@ export default function StatusPage() {
           <div style={styles.campaignTimeRow}>
             <span>
               <span style={{ fontWeight: 700, color: COLOR_CORAL }}>Campaign Time:</span>{" "}
-              {current.date} {current.time}
+              {new Date().toLocaleString()}
             </span>
           </div>
           <div style={styles.contentRow}>
             <div style={styles.card}>
-              <div style={styles.cardTitle}>Previous Campaign</div>
+              <div style={styles.cardTitle}>Previous Booster Campaign</div>
               <div style={styles.statRow}>
                 <span style={styles.statLabel}>Total Added</span>
-                <span style={styles.statValue}>{previousCampaigns[2].stats.total}</span>
-              </div>
-              <div style={styles.statRow}>
-                <span style={styles.statLabel}>1st Message</span>
-                <span style={styles.statValue}>{previousCampaigns[2].stats.firstMsg}</span>
-              </div>
-              <div style={styles.statRow}>
-                <span style={styles.statLabel}>Remaining</span>
-                <span style={styles.statValue}>{previousCampaigns[2].stats.remaining}</span>
-              </div>
-              <div style={styles.statRow}>
-                <span style={styles.statLabel}>Waiting</span>
-                <span style={styles.statValue}>{previousCampaigns[2].stats.waiting}</span>
-              </div>
-              <div style={styles.statRow}>
-                <span style={styles.statLabel}>Responded</span>
-                <span style={styles.statValue}>{previousCampaigns[2].stats.responded}</span>
-              </div>
-              <div style={styles.statRow}>
-                <span style={styles.statLabel}>No Response</span>
-                <span style={styles.statValue}>{previousCampaigns[2].stats.noResponse}</span>
+                <span style={styles.statValue}>
+                  {loading ? "Loading..." : boosterStats.previous}
+                </span>
               </div>
             </div>
             <div style={styles.card}>
-              <div style={styles.cardTitle}>Current Campaign</div>
+              <div style={styles.cardTitle}>Current Booster Campaign</div>
               <div style={styles.statRow}>
                 <span style={styles.statLabel}>Total Added</span>
-                <span style={styles.statValue}>{current.total}</span>
-              </div>
-              <div style={styles.statRow}>
-                <span style={styles.statLabel}>1st Message</span>
-                <span style={styles.statValue}>{current.firstMsg}</span>
-              </div>
-              <div style={styles.statRow}>
-                <span style={styles.statLabel}>Remaining</span>
-                <span style={styles.statValue}>{current.remaining}</span>
-              </div>
-              <div style={styles.statRow}>
-                <span style={styles.statLabel}>Waiting</span>
-                <span style={styles.statValue}>{current.waiting}</span>
-              </div>
-              <div style={styles.statRow}>
-                <span style={styles.statLabel}>Responded</span>
-                <span style={styles.statValue}>{current.responded}</span>
-              </div>
-              <div style={styles.statRow}>
-                <span style={styles.statLabel}>No Response</span>
-                <span style={styles.statValue}>{current.noResponse}</span>
+                <span style={styles.statValue}>
+                  {loading ? "Loading..." : boosterStats.current}
+                </span>
               </div>
             </div>
-          </div>
-          {/* Progress Bars for current campaign */}
-          <div style={styles.progressSection}>
-            <div style={styles.cardTitle}>Current Campaign Progress</div>
-            <div style={styles.progLabelRow}>
-              <span>Total Added</span>
-              <span>{current.total}</span>
-            </div>
-            <div style={styles.progBar}>
-              <div style={styles.progInner(getPercent(current.total, current.total), COLOR_CORAL)} />
-            </div>
-
-            <div style={styles.progLabelRow}>
-              <span>1st Message</span>
-              <span>{current.firstMsg}</span>
-            </div>
-            <div style={styles.progBar}>
-              <div style={styles.progInner(getPercent(current.firstMsg, current.total), COLOR_CORAL)} />
-            </div>
-
-            <div style={styles.progLabelRow}>
-              <span>Remaining</span>
-              <span>{current.remaining}</span>
-            </div>
-            <div style={styles.progBar}>
-              <div style={styles.progInner(getPercent(current.remaining, current.total), "#ffb6ae")} />
-            </div>
-
-            <div style={styles.progLabelRow}>
-              <span>Waiting</span>
-              <span>{current.waiting}</span>
-            </div>
-            <div style={styles.progBar}>
-              <div style={styles.progInner(getPercent(current.waiting, current.total), "#ffd5d2")} />
-            </div>
-
-            <div style={styles.progLabelRow}>
-              <span>Responded</span>
-              <span>{current.responded}</span>
-            </div>
-            <div style={styles.progBar}>
-              <div style={styles.progInner(getPercent(current.responded, current.total), "#ff8e87")} />
-            </div>
-
-            <div style={styles.progLabelRow}>
-              <span>No Response</span>
-              <span>{current.noResponse}</span>
-            </div>
-            <div style={styles.progBar}>
-              <div style={styles.progInner(getPercent(current.noResponse, current.total), "#ffcfc1")} />
-            </div>
-          </div>
-          <div style={styles.controlsRow}>
-            <button style={styles.controlBtn}>Export Report</button>
-            <Link href="/campaign" legacyBehavior>
-              <a style={styles.controlBtn}>Start New Campaign</a>
-            </Link>
           </div>
         </>
       ) : (
