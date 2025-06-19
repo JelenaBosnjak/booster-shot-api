@@ -85,7 +85,7 @@ export default function Dashboard() {
   return (
     <div style={styles.main}>
       <img
-        src="/your-logo.png" // update this path after you upload the new logo to /public
+        src="logo.png" // update this path after you upload the new logo to /public
         alt="App Logo"
         style={styles.logo}
         onError={e => e.target.src = "https://via.placeholder.com/180x80?text=Logo"}
