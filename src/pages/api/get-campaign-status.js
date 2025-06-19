@@ -86,7 +86,8 @@ export default async function handler(req, res) {
         .map((field) => ({ id: field.id, value: field.value })),
     }));
 
-    return res.status(200).json({ count: result.length, contacts: result });
+    // For demo: previous/current are always 0, but can be changed if needed
+    return res.status(200).json({ count: result.length, contacts: result, previous: 0, current: 0 });
   } catch (error) {
     return res
       .status(500)

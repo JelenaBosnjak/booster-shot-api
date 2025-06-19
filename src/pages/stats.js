@@ -60,7 +60,7 @@ export default function StatusPage() {
   const selectedPrev = previousCampaigns[selectedPrevIndex] || previousCampaigns[0];
 
   // --- Campaign Status from API ---
-  const [boosterStats, setBoosterStats] = useState({ previous: 0, current: 0 });
+  const [boosterStats, setBoosterStats] = useState({ previous: 0, current: 0, contacts: [] });
   const [boosterHistoryCount, setBoosterHistoryCount] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -73,13 +73,13 @@ export default function StatusPage() {
         setBoosterStats({
           previous: data.previous,
           current: data.current,
+          contacts: data.contacts || [],
         });
-        // For the new requirement: count of contacts with Booster Shot History
         if (data.count !== undefined) {
           setBoosterHistoryCount(data.count);
         }
       } catch (err) {
-        setBoosterStats({ previous: 0, current: 0 });
+        setBoosterStats({ previous: 0, current: 0, contacts: [] });
         setBoosterHistoryCount(null);
       }
       setLoading(false);
@@ -211,12 +211,25 @@ export default function StatusPage() {
       display: "flex",
       justifyContent: "flex-end",
       alignItems: "center",
-      marginBottom: "-20px",
+      marginBottom: "-10px",
       marginRight: "12px",
       fontSize: "1rem",
       color: "#767676",
       fontWeight: 600,
       gap: "2.5rem",
+    },
+    debugBlock: {
+      margin: "12px 0 18px 0",
+      padding: "8px 12px",
+      background: "#fff8f5",
+      border: `1px solid ${COLOR_CORAL}`,
+      borderRadius: 8,
+      color: "#a93729",
+      fontSize: "0.98rem",
+      maxWidth: 520,
+      lineHeight: 1.35,
+      whiteSpace: "pre-wrap",
+      fontFamily: "monospace",
     },
     progressSection: {
       margin: "40px auto 36px auto",
@@ -445,10 +458,24 @@ export default function StatusPage() {
               <span style={{ fontWeight: 700, color: COLOR_CORAL }}>Campaign Time:</span>{" "}
               {new Date().toLocaleString()}
             </span>
-            <span>
-              <span style={{ fontWeight: 700, color: COLOR_CORAL }}>Number of Contacts with Booster Shot History:</span>{" "}
-              {boosterHistoryCount === null ? "Loading..." : boosterHistoryCount}
-            </span>
+          </div>
+          {/* Debug block below campaign time */}
+          <div style={styles.debugBlock}>
+            <b>Number of Contacts with custom field Booster:</b>{" "}
+            {boosterHistoryCount === null ? "Loading..." : boosterHistoryCount}
+            {boosterStats.contacts && boosterStats.contacts.length > 0 && (
+              <div style={{ marginTop: 8 }}>
+                <b>Contacts (first 10):</b>
+                <ul style={{ margin: 0, paddingLeft: 18 }}>
+                  {boosterStats.contacts.slice(0, 10).map(c =>
+                    <li key={c.id}>
+                      {c.firstName} {c.lastName} ({c.phone || "No phone"}) | {c.boosterFields.map(f => f.value).join(", ")}
+                    </li>
+                  )}
+                  {boosterStats.contacts.length > 10 && <li>...and more</li>}
+                </ul>
+              </div>
+            )}
           </div>
           <div style={styles.contentRow}>
             <div style={styles.card}>
