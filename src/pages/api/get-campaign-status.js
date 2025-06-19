@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. Fetch all custom fields to get the ID for "Booster Shot History"
+    // 1. Fetch all custom fields to get the ID for "Booster History Data"
     const fieldsUrl = `https://rest.gohighlevel.com/v1/custom-fields/`;
     const fieldsResponse = await fetch(fieldsUrl, {
       headers: {
@@ -31,14 +31,15 @@ export default async function handler(req, res) {
     }
 
     const fieldsData = await fieldsResponse.json();
+    // Always look for "Booster History Data" (case-insensitive)
     const boosterFieldObj = (fieldsData.customFields || []).find(
-      (f) => f.name && f.name.toLowerCase() === "booster shot history"
+      (f) => f.name && f.name.toLowerCase() === "booster history data"
     );
 
     if (!boosterFieldObj) {
       return res
         .status(200)
-        .json({ error: 'Custom field "Booster Shot History" not found.', count: 0, contacts: [] });
+        .json({ error: 'Custom field "Booster History Data" not found.', count: 0, contacts: [] });
     }
 
     const boosterFieldId = boosterFieldObj.id;
@@ -67,7 +68,7 @@ export default async function handler(req, res) {
     const data = await response.json();
     const contacts = data.contacts || [];
 
-    // 3. List all contacts that have the "Booster Shot History" custom field
+    // 3. List all contacts that have the "Booster History Data" custom field
     const boosterContacts = contacts.filter((contact) =>
       (contact.customField || []).some(
         (field) => field.id === boosterFieldId && !!field.value
