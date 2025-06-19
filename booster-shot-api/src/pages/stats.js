@@ -57,7 +57,7 @@ const current = {
 export default function StatusPage() {
   const [activeTab, setActiveTab] = useState("current"); // "previous" or "current"
   const [selectedPrevIndex, setSelectedPrevIndex] = useState(2); // default to "Spring Glow Campaign"
-  const selectedPrev = previousCampaigns[selectedPrevIndex];
+  const selectedPrev = previousCampaigns[selectedPrevIndex] || previousCampaigns[0];
 
   // --- Campaign Status from API ---
   const [boosterStats, setBoosterStats] = useState({ previous: 0, current: 0 });
@@ -483,10 +483,10 @@ export default function StatusPage() {
               </thead>
               <tbody>
                 <tr>
-                  <td style={styles.prevStatsTd}>{selectedPrev.stats.total}</td>
-                  <td style={styles.prevStatsTd}>{selectedPrev.stats.firstMsg}</td>
-                  <td style={styles.prevStatsTd}>{selectedPrev.stats.remaining}</td>
-                  <td style={styles.prevStatsTd}>{selectedPrev.stats.waiting}</td>
+                  <td style={styles.prevStatsTd}>{selectedPrev?.stats?.total ?? 0}</td>
+                  <td style={styles.prevStatsTd}>{selectedPrev?.stats?.firstMsg ?? 0}</td>
+                  <td style={styles.prevStatsTd}>{selectedPrev?.stats?.remaining ?? 0}</td>
+                  <td style={styles.prevStatsTd}>{selectedPrev?.stats?.waiting ?? 0}</td>
                 </tr>
                 <tr>
                   <th style={styles.prevStatsTh}>Responded</th>
@@ -494,8 +494,8 @@ export default function StatusPage() {
                   <th style={{ ...styles.prevStatsTh, background: "none", border: "none" }} colSpan={2}></th>
                 </tr>
                 <tr>
-                  <td style={styles.prevStatsTd2}>{selectedPrev.stats.responded}</td>
-                  <td style={styles.prevStatsTd2}>{selectedPrev.stats.noResponse}</td>
+                  <td style={styles.prevStatsTd2}>{selectedPrev?.stats?.responded ?? 0}</td>
+                  <td style={styles.prevStatsTd2}>{selectedPrev?.stats?.noResponse ?? 0}</td>
                   <td colSpan={2} style={{ border: "none", background: "none" }}></td>
                 </tr>
               </tbody>
