@@ -45,6 +45,7 @@ export default async function handler(req, res) {
       if (boosterValue.includes(today)) current++;
       if (boosterValue.includes(yesterday)) previous++;
     });
+    
 
     return res.status(200).json({ previous, current });
   } catch (err) {
