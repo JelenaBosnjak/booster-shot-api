@@ -9,8 +9,6 @@ function getMostRecentDate(dates) {
   if (!dates.length) return null;
   return dates
     .map(d => {
-      // Remove time for Date parse if present, since new Date("6/18/2025 14:30") works in modern engines,
-      // but we only care about the date part for comparison.
       const [datePart] = d.split(" ");
       return new Date(datePart);
     })
@@ -34,6 +32,35 @@ export default async function handler(req, res) {
   }
 
   try {
+    // 1. Fetch all custom fields to get the ID for "Booster History Data"
+    const fieldsUrl = `https://rest.gohighlevel.com/v1/custom-fields/`;
+    const fieldsResponse = await fetch(fieldsUrl, {
+      headers: {
+        Authorization: `Bearer ${API_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!fieldsResponse.ok) {
+      let error;
+      try { error = await fieldsResponse.json(); } catch { error = { message: 'Unknown API error' }; }
+      console.error('GHL Custom Fields API Error:', error, 'Status:', fieldsResponse.status);
+      return res.status(fieldsResponse.status).json({ error: error.message || 'API Error' });
+    }
+
+    const fieldsData = await fieldsResponse.json();
+    const boosterFieldObj = (fieldsData.customFields || []).find(
+      f => f.name && f.name.toLowerCase() === "booster history data"
+    );
+
+    if (!boosterFieldObj) {
+      return res.status(200).json({ error: 'Custom field "Booster History Data" not found.' });
+    }
+
+    const boosterFieldId = boosterFieldObj.id;
+    console.log('Booster History Data Field ID:', boosterFieldId);
+
+    // 2. Fetch contacts
     const ghlUrl = `https://rest.gohighlevel.com/v1/contacts?limit=100`;
     const response = await fetch(ghlUrl, {
       headers: {
@@ -45,7 +72,7 @@ export default async function handler(req, res) {
     if (!response.ok) {
       let error;
       try { error = await response.json(); } catch { error = { message: 'Unknown API error' }; }
-      console.error('GHL API Error:', error, 'Status:', response.status);
+      console.error('GHL Contacts API Error:', error, 'Status:', response.status);
       return res.status(response.status).json({ error: error.message || 'API Error' });
     }
 
@@ -61,15 +88,12 @@ export default async function handler(req, res) {
       });
     });
 
-    // Find the ID of the "Booster Shot History" field by searching for a value containing "Booster Shot"
-    // This is a fallback if field names/IDs are unknown.
     let latestDate = null;
 
-    // 1. Find all most recent booster shot dates from all contacts
+    // 3. Find all most recent booster shot dates from all contacts, using the correct field ID
     const contactLatestDates = contacts.map(contact => {
-      // Try to find the custom field containing "Booster Shot" in its value
       const boosterField = (contact.customField || []).find(
-        f => f.value && f.value.includes("Booster Shot")
+        f => f.id === boosterFieldId && f.value
       );
       const dates = boosterField ? extractDates(boosterField.value) : [];
       const mostRecent = getMostRecentDate(dates);
@@ -84,17 +108,17 @@ export default async function handler(req, res) {
       return res.status(200).json({ previous: 0, current: 0 });
     }
 
-    // 2. Format dates for comparison
+    // 4. Format dates for comparison
     const latestDateStr = formatDate(latestDate);
 
-    // 3. Find previous latest date (the most recent date before the latest)
+    // 5. Find previous latest date (the most recent date before the latest)
     const previousDates = contactLatestDates
       .filter(d => d && formatDate(d) !== latestDateStr)
       .map(d => d.getTime());
     const previousLatestTime = previousDates.length ? Math.max(...previousDates) : null;
     const previousLatestDateStr = previousLatestTime ? formatDate(new Date(previousLatestTime)) : null;
 
-    // 4. Count contacts with latest booster on latestDate and previous latest date
+    // 6. Count contacts with latest booster on latestDate and previous latest date
     let current = 0, previous = 0;
     contactLatestDates.forEach(d => {
       if (!d) return;
