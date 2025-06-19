@@ -61,6 +61,7 @@ export default function StatusPage() {
 
   // --- Campaign Status from API ---
   const [boosterStats, setBoosterStats] = useState({ previous: 0, current: 0 });
+  const [boosterHistoryCount, setBoosterHistoryCount] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -73,8 +74,13 @@ export default function StatusPage() {
           previous: data.previous,
           current: data.current,
         });
+        // For the new requirement: count of contacts with Booster Shot History
+        if (data.count !== undefined) {
+          setBoosterHistoryCount(data.count);
+        }
       } catch (err) {
         setBoosterStats({ previous: 0, current: 0 });
+        setBoosterHistoryCount(null);
       }
       setLoading(false);
     }
@@ -210,6 +216,7 @@ export default function StatusPage() {
       fontSize: "1rem",
       color: "#767676",
       fontWeight: 600,
+      gap: "2.5rem",
     },
     progressSection: {
       margin: "40px auto 36px auto",
@@ -437,6 +444,10 @@ export default function StatusPage() {
             <span>
               <span style={{ fontWeight: 700, color: COLOR_CORAL }}>Campaign Time:</span>{" "}
               {new Date().toLocaleString()}
+            </span>
+            <span>
+              <span style={{ fontWeight: 700, color: COLOR_CORAL }}>Number of Contacts with Booster Shot History:</span>{" "}
+              {boosterHistoryCount === null ? "Loading..." : boosterHistoryCount}
             </span>
           </div>
           <div style={styles.contentRow}>
