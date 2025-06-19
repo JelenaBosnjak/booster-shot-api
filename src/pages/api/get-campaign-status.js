@@ -1,15 +1,24 @@
-// Helper to extract all MM/DD/YYYY dates from a string
+// Helper to extract all MM/DD/YYYY (or MM/DD/YYYY HH:MM) dates from a string
 function extractDates(text) {
-  return (text.match(/\d{1,2}\/\d{1,2}\/\d{4}/g) || []);
+  // Match dates in "M/D/YYYY" or "MM/DD/YYYY" optionally followed by time (e.g., "6/18/2025 14:30")
+  return (text.match(/\d{1,2}\/\d{1,2}\/\d{4}(?: \d{1,2}:\d{2})?/g) || []);
 }
 
-// Helper to get the most recent date from an array of MM/DD/YYYY strings
+// Helper to get the most recent date from an array of MM/DD/YYYY[ HH:MM] strings
 function getMostRecentDate(dates) {
   if (!dates.length) return null;
-  return dates.map(d => new Date(d)).sort((a, b) => b - a)[0];
+  return dates
+    .map(d => {
+      // Remove time for Date parse if present, since new Date("6/18/2025 14:30") works in modern engines,
+      // but we only care about the date part for comparison.
+      const [datePart] = d.split(" ");
+      return new Date(datePart);
+    })
+    .sort((a, b) => b - a)[0];
 }
 
 function formatDate(d) {
+  if (!d) return '';
   return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
 }
 
@@ -44,13 +53,23 @@ export default async function handler(req, res) {
     const contacts = data.contacts || [];
     console.log(`Fetched ${contacts.length} contacts`);
 
-    const todayStr = formatDate(new Date());
+    // DEBUG: List all custom fields for each contact
+    contacts.forEach(contact => {
+      console.log(`Contact ID: ${contact.id}`);
+      (contact.customField || []).forEach(field => {
+        console.log(`  Field ID: ${field.id}, Value: ${field.value}`);
+      });
+    });
+
+    // Find the ID of the "Booster Shot History" field by searching for a value containing "Booster Shot"
+    // This is a fallback if field names/IDs are unknown.
     let latestDate = null;
 
     // 1. Find all most recent booster shot dates from all contacts
     const contactLatestDates = contacts.map(contact => {
+      // Try to find the custom field containing "Booster Shot" in its value
       const boosterField = (contact.customField || []).find(
-        f => f.id && f.id.toLowerCase().includes("booster")
+        f => f.value && f.value.includes("Booster Shot")
       );
       const dates = boosterField ? extractDates(boosterField.value) : [];
       const mostRecent = getMostRecentDate(dates);
