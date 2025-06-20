@@ -68,29 +68,48 @@ export default async function handler(req, res) {
     const data = await response.json();
     const contacts = data.contacts || [];
 
-    // 3. List all contacts that have the "Booster History Data" custom field
-    const boosterContacts = contacts.filter((contact) =>
-      (contact.customField || []).some(
-        (field) => field.id === boosterFieldId && !!field.value
-      )
-    );
-
-    // 4. For debug: return the number and details (id, name, phone, field value)
-    const result = boosterContacts.map((contact) => ({
-      id: contact.id,
-      firstName: contact.firstName,
-      lastName: contact.lastName,
-      phone: contact.phone,
-      boosterFields: (contact.customField || [])
-        .filter((field) => field.id === boosterFieldId && !!field.value)
-        .map((field) => ({ id: field.id, value: field.value })),
-    }));
+    // 3. List all contacts that have the "Booster History Data" custom field,
+    // and sort by the date in that field (earliest to latest)
+    const boosterContacts = contacts
+      .map((contact) => {
+        const boosterFields = (contact.customField || []).filter(
+          (field) => field.id === boosterFieldId && !!field.value
+        );
+        // Extract date from the first booster field (if any)
+        const boosterDate =
+          boosterFields.length > 0 ? boosterFields[0].value : null;
+        return {
+          id: contact.id,
+          firstName: contact.firstName,
+          lastName: contact.lastName,
+          phone: contact.phone,
+          boosterFields: boosterFields.map((field) => ({
+            id: field.id,
+            value: field.value,
+          })),
+          boosterDate: boosterDate,
+        };
+      })
+      .filter((c) => c.boosterFields.length > 0)
+      .sort((a, b) => {
+        // Sort by boosterDate (earliest to latest)
+        // If date is missing, put it at the end
+        if (!a.boosterDate && !b.boosterDate) return 0;
+        if (!a.boosterDate) return 1;
+        if (!b.boosterDate) return -1;
+        return new Date(a.boosterDate) - new Date(b.boosterDate);
+      });
 
     // For demo: previous/current are always 0, but can be changed if needed
-    return res.status(200).json({ count: result.length, contacts: result, previous: 0, current: 0 });
+    return res.status(200).json({
+      count: boosterContacts.length,
+      contacts: boosterContacts.map(
+        ({ boosterDate, ...rest }) => rest // omit boosterDate from response
+      ),
+      previous: 0,
+      current: 0,
+    });
   } catch (error) {
-    return res
-      .status(500)
-      .json({ error: error.message || "Internal Server Error" });
+    return res.status(500).json({ error: error.message || "Internal Server Error" });
   }
 }

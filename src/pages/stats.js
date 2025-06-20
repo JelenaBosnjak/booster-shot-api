@@ -8,7 +8,6 @@ const COLOR_LIGHT_BG = "#fafbfc";
 const COLOR_GRAY = "#e5e7eb";
 const COLOR_PRIMARY = COLOR_DARK;
 
-// Demo data for campaigns
 const previousCampaigns = [
   {
     name: "Mother's Day Promo",
@@ -86,6 +85,16 @@ export default function StatusPage() {
     }
     fetchStats();
   }, []);
+
+  // Sort contacts by booster field value (date) ascending (earliest first)
+  const sortedContacts = (boosterStats.contacts || []).slice().sort((a, b) => {
+    const aDate = a.boosterFields?.[0]?.value;
+    const bDate = b.boosterFields?.[0]?.value;
+    if (!aDate && !bDate) return 0;
+    if (!aDate) return 1;
+    if (!bDate) return -1;
+    return new Date(aDate) - new Date(bDate);
+  });
 
   const styles = {
     page: {
@@ -463,16 +472,16 @@ export default function StatusPage() {
           <div style={styles.debugBlock}>
             <b>Number of Contacts with custom field Booster:</b>{" "}
             {boosterHistoryCount === null ? "Loading..." : boosterHistoryCount}
-            {boosterStats.contacts && boosterStats.contacts.length > 0 && (
+            {sortedContacts.length > 0 && (
               <div style={{ marginTop: 8 }}>
-                <b>Contacts (first 10):</b>
+                <b>Contacts (earliest 10):</b>
                 <ul style={{ margin: 0, paddingLeft: 18 }}>
-                  {boosterStats.contacts.slice(0, 10).map(c =>
+                  {sortedContacts.slice(0, 10).map(c =>
                     <li key={c.id}>
                       {c.firstName} {c.lastName} ({c.phone || "No phone"}) | {c.boosterFields.map(f => f.value).join(", ")}
                     </li>
                   )}
-                  {boosterStats.contacts.length > 10 && <li>...and more</li>}
+                  {sortedContacts.length > 10 && <li>...and more</li>}
                 </ul>
               </div>
             )}
