@@ -8,6 +8,23 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Missing API token" });
   }
 
+  // Helper: extract all MM/DD/YYYY dates from a string
+  function extractBoosterDates(str) {
+    // Match MM/DD/YYYY (with or without leading/trailing spaces and dashes)
+    const regex = /(\d{1,2}\/\d{1,2}\/\d{4})/g;
+    const matches = (str.match(regex) || []);
+    // Convert to Date objects, filter valid
+    return matches
+      .map((dateStr) => {
+        // Convert MM/DD/YYYY to YYYY-MM-DD for Date constructor
+        const parts = dateStr.split("/");
+        if (parts.length !== 3) return null;
+        // Use Date.UTC to avoid timezone issues
+        return new Date(`${parts[2]}-${parts[0].padStart(2, "0")}-${parts[1].padStart(2, "0")}`);
+      })
+      .filter((date) => date instanceof Date && !isNaN(date.getTime()));
+  }
+
   try {
     // 1. Fetch all custom fields to get the ID for "Booster History Data"
     const fieldsUrl = `https://rest.gohighlevel.com/v1/custom-fields/`;
@@ -68,16 +85,19 @@ export default async function handler(req, res) {
     const data = await response.json();
     const contacts = data.contacts || [];
 
-    // 3. List all contacts that have the "Booster History Data" custom field,
-    // and sort by the date in that field (earliest to latest)
+    // Build up arrays of all booster dates per contact
     const boosterContacts = contacts
       .map((contact) => {
         const boosterFields = (contact.customField || []).filter(
           (field) => field.id === boosterFieldId && !!field.value
         );
-        // Extract date from the first booster field (if any)
-        const boosterDate =
-          boosterFields.length > 0 ? boosterFields[0].value : null;
+        // There might be more than one value, but usually only one per contact
+        let allDates = [];
+        boosterFields.forEach(field => {
+          allDates = allDates.concat(extractBoosterDates(field.value));
+        });
+        // Convert to ISO string for easy comparison
+        const isoDates = allDates.map(d => d.toISOString().slice(0, 10));
         return {
           id: contact.id,
           firstName: contact.firstName,
@@ -87,46 +107,44 @@ export default async function handler(req, res) {
             id: field.id,
             value: field.value,
           })),
-          boosterDate: boosterDate,
+          boosterDates: allDates, // Array of JS Date
+          isoBoosterDates: isoDates // Array of "YYYY-MM-DD"
         };
       })
-      .filter((c) => c.boosterFields.length > 0)
-      .sort((a, b) => {
-        // Sort by boosterDate (earliest to latest)
-        // If date is missing, put it at the end
-        if (!a.boosterDate && !b.boosterDate) return 0;
-        if (!a.boosterDate) return 1;
-        if (!b.boosterDate) return -1;
-        return new Date(a.boosterDate) - new Date(b.boosterDate);
+      .filter((c) => c.boosterDates.length > 0);
+
+    // Now, find the overall earliest/latest booster shot date among all contacts
+    let allBoosterDates = [];
+    boosterContacts.forEach(c => allBoosterDates = allBoosterDates.concat(c.boosterDates));
+    if (allBoosterDates.length === 0) {
+      // No booster dates at all
+      return res.status(200).json({
+        count: 0,
+        contacts: [],
+        previous: 0,
+        current: 0
       });
+    }
+    // Get min and max date as ISO string (YYYY-MM-DD)
+    const minDate = new Date(Math.min(...allBoosterDates.map(d => d.getTime())));
+    const maxDate = new Date(Math.max(...allBoosterDates.map(d => d.getTime())));
+    const minDateIso = minDate.toISOString().slice(0, 10);
+    const maxDateIso = maxDate.toISOString().slice(0, 10);
 
-    // === Compute previous and current booster campaign counts ===
-    // Previous: count of leads with the EARLIEST booster date
-    // Current: count of leads with the LATEST booster date
-
+    // Now, for each contact, if their earliest booster date is minDate, count as previous
+    // If their latest booster date is maxDate, count as current
     let previous = 0;
     let current = 0;
-    if (boosterContacts.length > 0) {
-      const allDates = boosterContacts
-        .map((c) => c.boosterDate)
-        .filter(Boolean)
-        .map((d) => new Date(d).getTime());
+    boosterContacts.forEach(c => {
+      if (c.isoBoosterDates.includes(minDateIso)) previous++;
+      if (c.isoBoosterDates.includes(maxDateIso)) current++;
+    });
 
-      const minDate = Math.min(...allDates);
-      const maxDate = Math.max(...allDates);
-
-      previous = boosterContacts.filter(
-        (c) => c.boosterDate && new Date(c.boosterDate).getTime() === minDate
-      ).length;
-      current = boosterContacts.filter(
-        (c) => c.boosterDate && new Date(c.boosterDate).getTime() === maxDate
-      ).length;
-    }
-
+    // Return contacts as before, but without the extra fields
     return res.status(200).json({
       count: boosterContacts.length,
       contacts: boosterContacts.map(
-        ({ boosterDate, ...rest }) => rest // omit boosterDate from response
+        ({ boosterDates, isoBoosterDates, ...rest }) => rest
       ),
       previous,
       current,
