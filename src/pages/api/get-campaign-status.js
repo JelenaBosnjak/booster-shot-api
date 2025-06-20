@@ -100,14 +100,36 @@ export default async function handler(req, res) {
         return new Date(a.boosterDate) - new Date(b.boosterDate);
       });
 
-    // For demo: previous/current are always 0, but can be changed if needed
+    // === Compute previous and current booster campaign counts ===
+    // Previous: count of leads with the EARLIEST booster date
+    // Current: count of leads with the LATEST booster date
+
+    let previous = 0;
+    let current = 0;
+    if (boosterContacts.length > 0) {
+      const allDates = boosterContacts
+        .map((c) => c.boosterDate)
+        .filter(Boolean)
+        .map((d) => new Date(d).getTime());
+
+      const minDate = Math.min(...allDates);
+      const maxDate = Math.max(...allDates);
+
+      previous = boosterContacts.filter(
+        (c) => c.boosterDate && new Date(c.boosterDate).getTime() === minDate
+      ).length;
+      current = boosterContacts.filter(
+        (c) => c.boosterDate && new Date(c.boosterDate).getTime() === maxDate
+      ).length;
+    }
+
     return res.status(200).json({
       count: boosterContacts.length,
       contacts: boosterContacts.map(
         ({ boosterDate, ...rest }) => rest // omit boosterDate from response
       ),
-      previous: 0,
-      current: 0,
+      previous,
+      current,
     });
   } catch (error) {
     return res.status(500).json({ error: error.message || "Internal Server Error" });
