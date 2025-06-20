@@ -63,6 +63,11 @@ export default function StatusPage() {
   const [boosterHistoryCount, setBoosterHistoryCount] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // You might want to use these names for display
+  // For demo, hardcode, otherwise, fetch from backend or let user input
+  const previousBoosterCampaignName = selectedPrev.name; // or fallback to latest known
+  const currentBoosterCampaignName = "Current Booster Campaign"; // You can customize if you have the name
+
   useEffect(() => {
     async function fetchStats() {
       setLoading(true);
@@ -183,19 +188,36 @@ export default function StatusPage() {
       borderRadius: "18px",
       padding: "34px 34px",
       boxShadow: "0 4px 16px rgba(35,36,58,0.08)",
-      minWidth: 270,
-      maxWidth: 360,
+      minWidth: 320,
+      maxWidth: 380,
       border: `1.5px solid ${COLOR_GRAY}`,
       display: "flex",
       flexDirection: "column",
-      gap: 12,
+      gap: 8,
     },
     cardTitle: {
       fontWeight: 800,
       fontSize: "1.18rem",
       color: COLOR_PRIMARY,
-      marginBottom: "14px",
+      marginBottom: "8px",
       letterSpacing: "-0.5px",
+    },
+    cardRow: {
+      display: "flex",
+      alignItems: "center",
+      margin: "2px 0",
+      fontSize: "1.09rem",
+      fontWeight: 700,
+    },
+    cardLabel: {
+      minWidth: 130,
+      color: COLOR_DARK,
+    },
+    cardValue: {
+      color: COLOR_CORAL,
+      fontWeight: 800,
+      fontSize: "1.12rem",
+      marginLeft: 8,
     },
     statRow: {
       display: "flex",
@@ -487,20 +509,34 @@ export default function StatusPage() {
             )}
           </div>
           <div style={styles.contentRow}>
+            {/* Previous Booster Campaign Card */}
             <div style={styles.card}>
               <div style={styles.cardTitle}>Previous Booster Campaign</div>
-              <div style={styles.statRow}>
-                <span style={styles.statLabel}>Total Added</span>
-                <span style={styles.statValue}>
+              <div style={styles.cardRow}>
+                <span style={styles.cardLabel}>Campaign Name:</span>
+                <span style={styles.cardValue}>
+                  {previousBoosterCampaignName}
+                </span>
+              </div>
+              <div style={styles.cardRow}>
+                <span style={styles.cardLabel}>Total Added:</span>
+                <span style={styles.cardValue}>
                   {loading ? "Loading..." : boosterStats.previous}
                 </span>
               </div>
             </div>
+            {/* Current Booster Campaign Card */}
             <div style={styles.card}>
               <div style={styles.cardTitle}>Current Booster Campaign</div>
-              <div style={styles.statRow}>
-                <span style={styles.statLabel}>Total Added</span>
-                <span style={styles.statValue}>
+              <div style={styles.cardRow}>
+                <span style={styles.cardLabel}>Campaign Name:</span>
+                <span style={styles.cardValue}>
+                  {currentBoosterCampaignName}
+                </span>
+              </div>
+              <div style={styles.cardRow}>
+                <span style={styles.cardLabel}>Total Added:</span>
+                <span style={styles.cardValue}>
                   {loading ? "Loading..." : boosterStats.current}
                 </span>
               </div>
