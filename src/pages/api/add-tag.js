@@ -4,8 +4,7 @@ const CUSTOM_FIELDS_URL = "https://rest.gohighlevel.com/v1/custom-fields";
 const BATCH_SIZE = 100;
 const BATCH_INTERVAL = 10_000;
 
-// Field name to search for (case-insensitive, trimmed)
-const BOOSTER_CAMPAIGN_NAME_FIELD_NAME = "Booster Campaign Name";
+const BOOSTER_SMS_NAME_FIELD_NAME = "Booster Sms Name";
 const BOOSTER_SHOT_CUSTOM_VALUE_NAME = "Booster shot message";
 
 export default async function handler(req, res) {
@@ -56,7 +55,6 @@ export default async function handler(req, res) {
     }
   }
 
-  // Tagging contacts in batches
   for (let i = 0; i < contactIds.length; i += BATCH_SIZE) {
     const batch = contactIds.slice(i, i + BATCH_SIZE);
     const batchResults = await Promise.all(batch.map(tagContact));
@@ -68,7 +66,7 @@ export default async function handler(req, res) {
     }
   }
 
-  // Set Custom Value for Booster Shot Message (location-wide), dynamically get the ID
+  // Set Custom Value for Booster Shot Message (location-wide)
   let customValueResult = null;
   if (boosterShotMessage && locationId) {
     try {
@@ -115,10 +113,9 @@ export default async function handler(req, res) {
     }
   }
 
-  // Set Booster Campaign Name as custom field for each contact
-  let campaignNameResults = [];
+  // Set Booster Sms Name as custom field for each contact
+  let boosterSmsNameResults = [];
   if (boosterCampaignName && contactIds.length > 0 && locationId) {
-    // 1. Find the custom field ID for "Booster Campaign Name" for the location
     let fieldId = null;
     try {
       const fieldsRes = await fetch(`${CUSTOM_FIELDS_URL}/?locationId=${locationId}`, {
@@ -127,13 +124,12 @@ export default async function handler(req, res) {
       if (fieldsRes.ok) {
         const fieldsData = await fieldsRes.json();
         const found = fieldsData.customFields.find(f =>
-          f.name && f.name.trim().toLowerCase() === BOOSTER_CAMPAIGN_NAME_FIELD_NAME.toLowerCase()
+          f.name && f.name.trim().toLowerCase() === BOOSTER_SMS_NAME_FIELD_NAME.toLowerCase()
         );
         if (found) fieldId = found.id;
       }
     } catch (e) {}
     if (fieldId) {
-      // update the custom field for each contact
       for (const contactId of contactIds) {
         try {
           const updateRes = await fetch(`${GHL_API_URL}/${contactId}/customFields`, {
@@ -148,19 +144,18 @@ export default async function handler(req, res) {
           });
           if (!updateRes.ok) {
             const errData = await updateRes.json().catch(() => ({}));
-            campaignNameResults.push({ contactId, success: false, error: errData.error || updateRes.statusText });
+            boosterSmsNameResults.push({ contactId, success: false, error: errData.error || updateRes.statusText });
           } else {
-            campaignNameResults.push({ contactId, success: true });
+            boosterSmsNameResults.push({ contactId, success: true });
           }
         } catch (err) {
-          campaignNameResults.push({ contactId, success: false, error: err.message || 'Unknown error' });
+          boosterSmsNameResults.push({ contactId, success: false, error: err.message || 'Unknown error' });
         }
       }
     } else {
-      // Do NOT create the field, just return not found for all contacts
-      campaignNameResults = contactIds.map(contactId => ({
+      boosterSmsNameResults = contactIds.map(contactId => ({
         contactId, success: false,
-        error: `Custom field "${BOOSTER_CAMPAIGN_NAME_FIELD_NAME}" not found for location`
+        error: `Custom field "${BOOSTER_SMS_NAME_FIELD_NAME}" not found for location`
       }));
     }
   }
@@ -171,10 +166,9 @@ export default async function handler(req, res) {
       results,
       resetTime,
       customValueResult,
-      campaignNameResults
+      boosterSmsNameResults
     });
   }
 
-  // Success
-  return res.status(200).json({ results, customValueResult, campaignNameResults });
+  return res.status(200).json({ results, customValueResult, boosterSmsNameResults });
 }
