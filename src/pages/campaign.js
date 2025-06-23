@@ -292,9 +292,8 @@ export default function ContactList() {
       if (result.customValueResult && !result.customValueResult.success) {
         alert(`Warning: Custom Value update failed: ${result.customValueResult.error}`);
       }
-      // Updated: check for boosterSmsNameResults instead of campaignNameResults
-      if (result.boosterSmsNameResults && result.boosterSmsNameResults.some(r => !r.success)) {
-        alert(`Warning: Some contacts' Booster Sms Name update failed.`);
+      if (result.boosterCampaignNameCustomValueResult && !result.boosterCampaignNameCustomValueResult.success) {
+        alert(`Warning: Booster Campaign Name update failed: ${result.boosterCampaignNameCustomValueResult.error}`);
       }
 
       if (locationId) {
@@ -709,15 +708,7 @@ export default function ContactList() {
                           ))
                           : ''}
                       </div>
-                      <div style={styles.campaignNameField}>
-                        Booster Campaign: {
-                          Array.isArray(contact.customField)
-                            ? (contact.customField.find(f =>
-                                f.name && f.name.toLowerCase() === "booster sms name"
-                              )?.value || "—")
-                            : "—"
-                        }
-                      </div>
+                      {/* No per-contact campaign name, as it's now a custom value. Remove old custom field display. */}
                     </div>
                   </div>
                 ))}

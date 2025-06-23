@@ -1,12 +1,9 @@
 const GHL_API_KEY = process.env.GHL_API_KEY || process.env.GHL_API_TOKEN;
 const GHL_API_URL = "https://rest.gohighlevel.com/v1/contacts";
-const CUSTOM_FIELDS_URL = "https://rest.gohighlevel.com/v1/custom-fields";
 const BATCH_SIZE = 100;
 const BATCH_INTERVAL = 10_000;
-
-// Field name to search for (case-insensitive, trimmed)
-const SMS_FIELD_NAME = "Sms";
 const BOOSTER_SHOT_CUSTOM_VALUE_NAME = "Booster shot message";
+const BOOSTER_CAMPAIGN_NAME_CUSTOM_VALUE = "Booster Campaign Name";
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -115,50 +112,50 @@ export default async function handler(req, res) {
     }
   }
 
-  // Set Sms as custom field for each contact, using PATCH
-  let smsFieldResults = [];
-  if (boosterCampaignName && contactIds.length > 0 && locationId) {
-    let fieldId = null;
+  // Set Custom Value for Booster Campaign Name (location-wide), dynamically get the ID
+  let boosterCampaignNameCustomValueResult = null;
+  if (boosterCampaignName && locationId) {
     try {
-      const fieldsRes = await fetch(`${CUSTOM_FIELDS_URL}/?locationId=${locationId}`, {
+      const GHL_CUSTOM_VALUES_URL = "https://rest.gohighlevel.com/v1/custom-values";
+      const customValuesRes = await fetch(GHL_CUSTOM_VALUES_URL, {
         headers: { 'Authorization': `Bearer ${GHL_API_KEY}` }
       });
-      if (fieldsRes.ok) {
-        const fieldsData = await fieldsRes.json();
-        const found = fieldsData.customFields.find(f =>
-          f.name && f.name.trim().toLowerCase() === SMS_FIELD_NAME.toLowerCase()
+      if (!customValuesRes.ok) {
+        const error = await customValuesRes.text();
+        boosterCampaignNameCustomValueResult = { success: false, error: "Failed to fetch custom values: " + error };
+      } else {
+        const customValuesData = await customValuesRes.json();
+        const customValue = customValuesData.customValues.find(
+          v => v.name && v.name.trim().toLowerCase() === BOOSTER_CAMPAIGN_NAME_CUSTOM_VALUE.toLowerCase()
         );
-        if (found) fieldId = found.id;
-      }
-    } catch (e) {}
-    if (fieldId) {
-      for (const contactId of contactIds) {
-        try {
-          const updateRes = await fetch(`${GHL_API_URL}/${contactId}/customFields`, {
-            method: "PATCH", // PATCH instead of POST
+        if (!customValue) {
+          boosterCampaignNameCustomValueResult = {
+            success: false,
+            error: `Custom value "${BOOSTER_CAMPAIGN_NAME_CUSTOM_VALUE}" not found`
+          };
+        } else {
+          const customValueRes = await fetch(`${GHL_CUSTOM_VALUES_URL}/${customValue.id}`, {
+            method: 'PUT',
             headers: {
               'Authorization': `Bearer ${GHL_API_KEY}`,
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify([
-              { field: fieldId, value: boosterCampaignName }
-            ])
+            body: JSON.stringify({
+              value: boosterCampaignName,
+              locationId
+            })
           });
-          if (!updateRes.ok) {
-            const errData = await updateRes.json().catch(() => ({}));
-            smsFieldResults.push({ contactId, success: false, error: errData.error || updateRes.statusText });
+
+          if (!customValueRes.ok) {
+            const errData = await customValueRes.json().catch(() => ({}));
+            boosterCampaignNameCustomValueResult = { success: false, error: errData.error || customValueRes.statusText };
           } else {
-            smsFieldResults.push({ contactId, success: true });
+            boosterCampaignNameCustomValueResult = { success: true };
           }
-        } catch (err) {
-          smsFieldResults.push({ contactId, success: false, error: err.message || 'Unknown error' });
         }
       }
-    } else {
-      smsFieldResults = contactIds.map(contactId => ({
-        contactId, success: false,
-        error: `Custom field "${SMS_FIELD_NAME}" not found for location`
-      }));
+    } catch (err) {
+      boosterCampaignNameCustomValueResult = { success: false, error: err.message || 'Unknown error' };
     }
   }
 
@@ -168,10 +165,10 @@ export default async function handler(req, res) {
       results,
       resetTime,
       customValueResult,
-      smsFieldResults
+      boosterCampaignNameCustomValueResult
     });
   }
 
   // Success
-  return res.status(200).json({ results, customValueResult, smsFieldResults });
+  return res.status(200).json({ results, customValueResult, boosterCampaignNameCustomValueResult });
 }

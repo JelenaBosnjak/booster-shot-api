@@ -22,7 +22,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. Fetch all custom fields to get the ID for "Booster History Data" and "Booster Campaign Name"
+    // 1. Fetch all custom fields to get the ID for "Booster History Data"
     const fieldsUrl = `https://rest.gohighlevel.com/v1/custom-fields/`;
     const fieldsResponse = await fetch(fieldsUrl, {
       headers: {
@@ -47,9 +47,6 @@ export default async function handler(req, res) {
     const boosterFieldObj = (fieldsData.customFields || []).find(
       (f) => f.name && f.name.toLowerCase() === "booster history data"
     );
-    const boosterCampaignNameFieldObj = (fieldsData.customFields || []).find(
-      (f) => f.name && f.name.toLowerCase() === "booster campaign name"
-    );
 
     if (!boosterFieldObj) {
       return res
@@ -58,7 +55,6 @@ export default async function handler(req, res) {
     }
 
     const boosterFieldId = boosterFieldObj.id;
-    const boosterCampaignNameFieldId = boosterCampaignNameFieldObj?.id;
 
     // 2. Fetch contacts
     const ghlUrl = `https://rest.gohighlevel.com/v1/contacts?limit=100`;
@@ -84,17 +80,32 @@ export default async function handler(req, res) {
     const data = await response.json();
     const contacts = data.contacts || [];
 
-    // Build up arrays of all booster dates per contact and get campaign name field
+    // --- NEW: Fetch custom value for Booster Campaign Name (location-wide) ---
+    // You may want to get locationId from query or from one of the contacts.
+    // If your app is single-location, you can hardcode it or pass it as a query param.
+    // For multi-location, adapt as needed.
+    let boosterCampaignName = null;
+    const locationId = contacts[0]?.locationId; // Use first contact's locationId if available
+    if (locationId) {
+      const customValuesRes = await fetch(
+        `https://rest.gohighlevel.com/v1/custom-values?locationId=${locationId}`,
+        { headers: { Authorization: `Bearer ${API_TOKEN}` } }
+      );
+      if (customValuesRes.ok) {
+        const customValuesData = await customValuesRes.json();
+        const customValue = (customValuesData.customValues || []).find(
+          v => v.name && v.name.trim().toLowerCase() === "booster campaign name"
+        );
+        if (customValue) boosterCampaignName = customValue.value || null;
+      }
+    }
+
+    // --- Build up arrays of all booster dates per contact ---
     const boosterContacts = contacts
       .map((contact) => {
         const boosterFields = (contact.customField || []).filter(
           (field) => field.id === boosterFieldId && !!field.value
         );
-        const campaignFields = boosterCampaignNameFieldId
-          ? (contact.customField || []).filter(
-              (field) => field.id === boosterCampaignNameFieldId && !!field.value
-            )
-          : [];
         let allDates = [];
         boosterFields.forEach(field => {
           allDates = allDates.concat(extractBoosterDates(field.value));
@@ -109,8 +120,7 @@ export default async function handler(req, res) {
             id: field.id,
             value: field.value,
           })),
-          boosterCampaignName:
-            campaignFields.length > 0 ? campaignFields[0].value : null,
+          boosterCampaignName,
           boosterDates: allDates,
           isoBoosterDates: isoDates
         };
@@ -139,17 +149,8 @@ export default async function handler(req, res) {
       if (c.isoBoosterDates.includes(maxDateIso)) current++;
     });
 
-    // Find the campaign name that is most common among those with the latest booster date for "current" campaign
-    let currentBoosterCampaignName = null;
-    const currentCampaignNames = boosterContacts
-      .filter(c => c.isoBoosterDates.includes(maxDateIso))
-      .map(c => c.boosterCampaignName)
-      .filter(Boolean);
-    if (currentCampaignNames.length > 0) {
-      const freq = {};
-      currentCampaignNames.forEach(n => { freq[n] = (freq[n] || 0) + 1; });
-      currentBoosterCampaignName = Object.entries(freq).sort((a, b) => b[1] - a[1])[0][0];
-    }
+    // The most common campaign name among latest booster contacts (they all have the same, now from custom value)
+    let currentBoosterCampaignName = boosterCampaignName;
 
     return res.status(200).json({
       count: boosterContacts.length,
