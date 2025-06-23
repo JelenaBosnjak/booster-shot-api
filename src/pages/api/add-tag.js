@@ -1,18 +1,18 @@
 const GHL_API_KEY = process.env.GHL_API_KEY || process.env.GHL_API_TOKEN;
 const GHL_API_URL = "https://rest.gohighlevel.com/v1/contacts";
 const GHL_CUSTOM_VALUES_URL = "https://rest.gohighlevel.com/v1/custom-values";
-const BATCH_SIZE = 100;      // GHL burst limit per 10 seconds
-const BATCH_INTERVAL = 10_000; // 10 seconds in ms
+const BATCH_SIZE = 100;
+const BATCH_INTERVAL = 10_000;
 
-// The name of your custom value, change if needed
 const BOOSTER_SHOT_CUSTOM_VALUE_NAME = "Booster shot message";
+const BOOSTER_CAMPAIGN_NAME_FIELD = "Booster Campaign Name"; // <-- custom value name
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { contactIds, tag, boosterShotMessage, locationId } = req.body;
+  const { contactIds, tag, boosterShotMessage, boosterCampaignName, locationId } = req.body;
 
   if (!contactIds || !Array.isArray(contactIds) || contactIds.length === 0 || !tag) {
     return res.status(400).json({ error: 'contactIds (array) and tag are required' });
@@ -38,7 +38,6 @@ export default async function handler(req, res) {
       });
 
       if (response.status === 429) {
-        // Rate limit hit
         const retryAfter = parseInt(response.headers.get('ratelimit-reset')) || 10;
         rateLimitHit = true;
         resetTime = retryAfter;
@@ -59,17 +58,10 @@ export default async function handler(req, res) {
   // Tagging contacts in batches
   for (let i = 0; i < contactIds.length; i += BATCH_SIZE) {
     const batch = contactIds.slice(i, i + BATCH_SIZE);
-
-    // Tag contacts in this batch in parallel (up to 100 at once)
     const batchResults = await Promise.all(batch.map(tagContact));
     results.push(...batchResults);
 
-    // If a rate limit was hit, stop further processing
-    if (rateLimitHit) {
-      break;
-    }
-
-    // If there are more contacts, wait 10s before next batch
+    if (rateLimitHit) break;
     if (i + BATCH_SIZE < contactIds.length) {
       await new Promise((resolve) => setTimeout(resolve, BATCH_INTERVAL));
     }
@@ -79,7 +71,6 @@ export default async function handler(req, res) {
   let customValueResult = null;
   if (boosterShotMessage && locationId) {
     try {
-      // 1. Fetch all custom values for the account
       const customValuesRes = await fetch(GHL_CUSTOM_VALUES_URL, {
         headers: { 'Authorization': `Bearer ${GHL_API_KEY}` }
       });
@@ -88,7 +79,6 @@ export default async function handler(req, res) {
         customValueResult = { success: false, error: "Failed to fetch custom values: " + error };
       } else {
         const customValuesData = await customValuesRes.json();
-        // 2. Find the custom value by name (case-insensitive)
         const customValue = customValuesData.customValues.find(
           v => v.name.trim().toLowerCase() === BOOSTER_SHOT_CUSTOM_VALUE_NAME.toLowerCase()
         );
@@ -98,7 +88,6 @@ export default async function handler(req, res) {
             error: `Custom value "${BOOSTER_SHOT_CUSTOM_VALUE_NAME}" not found`
           };
         } else {
-          // 3. Update the custom value
           const customValueRes = await fetch(`${GHL_CUSTOM_VALUES_URL}/${customValue.id}`, {
             method: 'PUT',
             headers: {
@@ -124,15 +113,65 @@ export default async function handler(req, res) {
     }
   }
 
+  // Set Booster Campaign Name for each contact
+  let campaignNameResults = [];
+  if (boosterCampaignName && contactIds.length > 0) {
+    // fetch custom fields for the location to find the field ID
+    let fieldId = null;
+    try {
+      const fieldsRes = await fetch(`${GHL_API_URL}/customFields?locationId=${locationId}`, {
+        headers: { 'Authorization': `Bearer ${GHL_API_KEY}` }
+      });
+      if (fieldsRes.ok) {
+        const fieldsData = await fieldsRes.json();
+        const found = fieldsData.customFields.find(f =>
+          f.name && f.name.trim().toLowerCase() === BOOSTER_CAMPAIGN_NAME_FIELD.toLowerCase()
+        );
+        if (found) fieldId = found.id;
+      }
+    } catch (e) {}
+    if (fieldId) {
+      // update the custom field for each contact
+      for (const contactId of contactIds) {
+        try {
+          const updateRes = await fetch(`${GHL_API_URL}/${contactId}/customFields`, {
+            method: "POST",
+            headers: {
+              'Authorization': `Bearer ${GHL_API_KEY}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify([
+              { field: fieldId, value: boosterCampaignName }
+            ])
+          });
+          if (!updateRes.ok) {
+            const errData = await updateRes.json().catch(() => ({}));
+            campaignNameResults.push({ contactId, success: false, error: errData.error || updateRes.statusText });
+          } else {
+            campaignNameResults.push({ contactId, success: true });
+          }
+        } catch (err) {
+          campaignNameResults.push({ contactId, success: false, error: err.message || 'Unknown error' });
+        }
+      }
+    } else {
+      campaignNameResults = contactIds.map(contactId => ({
+        contactId, success: false,
+        error: `Custom field "${BOOSTER_CAMPAIGN_NAME_FIELD}" not found`
+      }));
+    }
+  }
+
   if (rateLimitHit) {
     return res.status(429).json({
       error: `Rate limit exceeded. Try again after ${resetTime} seconds.`,
       results,
       resetTime,
-      customValueResult
+      customValueResult,
+      campaignNameResults
     });
   }
 
   // Success
-  return res.status(200).json({ results, customValueResult });
+  return res.status(200).json({ results, customValueResult, campaignNameResults });
 }

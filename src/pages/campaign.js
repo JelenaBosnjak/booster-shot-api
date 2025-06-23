@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 
 // ForeverBooked brand colors:
-const COLOR_DARK = "#23243a"; // deep indigo
-const COLOR_CORAL = "#ff8e87"; // coral
-const COLOR_LIGHT_BG = "#fafbfc"; // soft background
+const COLOR_DARK = "#23243a";
+const COLOR_CORAL = "#ff8e87";
+const COLOR_LIGHT_BG = "#fafbfc";
 const COLOR_GRAY = "#e5e7eb";
 const COLOR_WHITE = "#fff";
 const COLOR_SUCCESS = "#28a745";
@@ -200,7 +200,6 @@ export default function ContactList() {
         setOptimizing(false);
         return;
       }
-      // Set optimized message in the textarea and booster shot state
       setSmsMessage(data.optimized);
       setOptimizedMessage(data.optimized);
     } catch (err) {
@@ -210,7 +209,6 @@ export default function ContactList() {
     }
   };
 
-  // --- Send Test Message Handler (calls backend) ---
   const handleSendTest = async () => {
     if (!testPhone) {
       alert("Enter a phone number.");
@@ -240,7 +238,7 @@ export default function ContactList() {
     }
   };
 
-  // --- Launch Campaign Handler ---
+  // --- Launch Campaign Handler (updated!) ---
   const handleLaunchCampaign = async () => {
     if (selectedContacts.size === 0) {
       alert('Please select at least one contact.');
@@ -263,7 +261,8 @@ export default function ContactList() {
         body: JSON.stringify({
           contactIds: Array.from(selectedContacts),
           tag: 'booster shot',
-          boosterShotMessage: smsMessage, // will be the optimized message if optimized
+          boosterShotMessage: smsMessage,
+          boosterCampaignName: campaign, // <-- send campaign selection!
           locationId
         })
       });
@@ -293,6 +292,9 @@ export default function ContactList() {
       if (result.customValueResult && !result.customValueResult.success) {
         alert(`Warning: Custom Value update failed: ${result.customValueResult.error}`);
       }
+      if (result.campaignNameResults && result.campaignNameResults.some(r => !r.success)) {
+        alert(`Warning: Some contacts' Booster Campaign Name update failed.`);
+      }
 
       if (locationId) {
         const currentUrl = prevPages[currentPage - 1] ||
@@ -308,7 +310,6 @@ export default function ContactList() {
     }
   };
 
-  // Helper: filter contacts by search term and selected tag
   const filteredContacts = () => {
     let filtered = contacts;
     if (selectedTag) {
@@ -328,7 +329,6 @@ export default function ContactList() {
     return filtered;
   };
 
-  // Helper to show time until rate limit resets
   const getResetTimeString = () => {
     if (rateLimitError?.resetTime) {
       const seconds = Number(rateLimitError.resetTime);
@@ -342,7 +342,6 @@ export default function ContactList() {
     return null;
   };
 
-  // --- Styles ---
   const styles = {
     main: {
       padding: '40px 0',
@@ -516,6 +515,7 @@ export default function ContactList() {
     },
     countText: { color: COLOR_PRIMARY, fontWeight: 700 },
     launchInfo: { marginTop: 14, fontSize: 13, color: '#888' },
+    campaignNameField: { fontSize: 12, color: COLOR_CORAL, marginTop: 2 }
   };
 
   return (
@@ -707,6 +707,15 @@ export default function ContactList() {
                             <span key={tag} style={styles.tag}>{tag}</span>
                           ))
                           : ''}
+                      </div>
+                      <div style={styles.campaignNameField}>
+                        Booster Campaign: {
+                          Array.isArray(contact.customField)
+                            ? (contact.customField.find(f =>
+                                f.name && f.name.toLowerCase() === "booster campaign name"
+                              )?.value || "—")
+                            : "—"
+                        }
                       </div>
                     </div>
                   </div>
