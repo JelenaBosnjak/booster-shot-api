@@ -102,57 +102,55 @@ export default function StatusPage() {
           setCurrentBoosterCampaignName("Current Booster Campaign");
         }
 
-        // --- Identify unique campaign launches by timestamp ---
-        let allCampaignEvents = [];
-        (statsData.contacts || []).forEach(contact => {
-          (contact.boosterFields || []).forEach(field => {
-            // Extract ALL launches from this field value!
-            const launches = extractAllCampaignDateTimes(field.value);
-            launches.forEach(launch => {
-              allCampaignEvents.push({
-                campaignName: contact.boosterCampaignName || "",
-                campaignDate: launch.date,
-                iso: launch.iso,
-                rawValue: field.value,
-                contactId: contact.id,
+        // Use backend-provided totalCampaigns if present, else fallback to frontend extraction logic
+        if (typeof statsData.totalCampaigns === "number") {
+          setTotalCampaignLaunches(statsData.totalCampaigns);
+        } else {
+          // Fallback frontend logic
+          let allCampaignEvents = [];
+          (statsData.contacts || []).forEach(contact => {
+            (contact.boosterFields || []).forEach(field => {
+              // Extract ALL launches from this field value!
+              const launches = extractAllCampaignDateTimes(field.value);
+              launches.forEach(launch => {
+                allCampaignEvents.push({
+                  campaignName: contact.boosterCampaignName || "",
+                  campaignDate: launch.date,
+                  iso: launch.iso,
+                  rawValue: field.value,
+                  contactId: contact.id,
+                });
               });
             });
           });
-        });
-        // Only keep events with campaignDate and campaignName
-        allCampaignEvents = allCampaignEvents.filter(ev => ev.campaignDate && ev.campaignName);
+          // Only keep events with campaignDate and campaignName
+          allCampaignEvents = allCampaignEvents.filter(ev => ev.campaignDate && ev.campaignName);
+          // Group by campaignName + full ISO date time string for current campaign only
+          let uniqueCampaigns = [];
+          let seen = {};
+          allCampaignEvents.forEach(ev => {
+            const key = `${ev.campaignName}|${ev.iso}`;
+            if (!seen[key] && ev.campaignName === statsData.currentBoosterCampaignName) {
+              uniqueCampaigns.push(ev);
+              seen[key] = true;
+            }
+          });
+          setTotalCampaignLaunches(uniqueCampaigns.length);
+        }
 
-        // Group by campaignName + full ISO date time string
-        // Sort all events by date descending
-        allCampaignEvents.sort((a, b) => b.campaignDate - a.campaignDate);
-
-        // Find unique launches for the current campaign name (by ISO)
-        let uniqueCampaigns = [];
-        let seen = {};
-        allCampaignEvents.forEach(ev => {
-          const key = `${ev.campaignName}|${ev.iso}`;
-          if (!seen[key] && ev.campaignName === statsData.currentBoosterCampaignName) {
-            uniqueCampaigns.push(ev);
-            seen[key] = true;
-          }
-        });
-
-        setTotalCampaignLaunches(uniqueCampaigns.length);
-
-        if (uniqueCampaigns.length > 0) {
+        if (statsData.currentCampaignTimestamp) {
           setCurrentCampaignTimestamp(
-            uniqueCampaigns[0].campaignDate.toLocaleString()
+            new Date(statsData.currentCampaignTimestamp).toLocaleString()
           );
-          if (uniqueCampaigns[1]) {
-            setPreviousCampaignTimestamp(
-              uniqueCampaigns[1].campaignDate.toLocaleString()
-            );
-          } else {
-            setPreviousCampaignTimestamp(""); // No prior
-          }
         } else {
           setCurrentCampaignTimestamp("");
-          setPreviousCampaignTimestamp("");
+        }
+        if (statsData.previousCampaignTimestamp) {
+          setPreviousCampaignTimestamp(
+            new Date(statsData.previousCampaignTimestamp).toLocaleString()
+          );
+        } else {
+          setPreviousCampaignTimestamp(""); // No prior
         }
       } catch (err) {
         setBoosterStats({ previous: 0, current: 0, contacts: [] });
