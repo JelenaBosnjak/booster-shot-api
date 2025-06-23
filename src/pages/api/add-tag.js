@@ -1,11 +1,12 @@
 const GHL_API_KEY = process.env.GHL_API_KEY || process.env.GHL_API_TOKEN;
 const GHL_API_URL = "https://rest.gohighlevel.com/v1/contacts";
-const GHL_CUSTOM_FIELDS_URL = "https://rest.gohighlevel.com/v1/custom-fields";
+const CUSTOM_FIELDS_URL = "https://rest.gohighlevel.com/v1/custom-fields";
 const BATCH_SIZE = 100;
 const BATCH_INTERVAL = 10_000;
 
+// Field name to search for (case-insensitive, trimmed)
+const BOOSTER_CAMPAIGN_NAME_FIELD_NAME = "Booster Campaign Name";
 const BOOSTER_SHOT_CUSTOM_VALUE_NAME = "Booster shot message";
-const BOOSTER_CAMPAIGN_NAME_FIELD_NAME = "Booster Campaign Name"; // <-- correct spelling
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -81,7 +82,7 @@ export default async function handler(req, res) {
       } else {
         const customValuesData = await customValuesRes.json();
         const customValue = customValuesData.customValues.find(
-          v => v.name.trim().toLowerCase() === BOOSTER_SHOT_CUSTOM_VALUE_NAME.toLowerCase()
+          v => v.name && v.name.trim().toLowerCase() === BOOSTER_SHOT_CUSTOM_VALUE_NAME.toLowerCase()
         );
         if (!customValue) {
           customValueResult = {
@@ -120,7 +121,7 @@ export default async function handler(req, res) {
     // 1. Find the custom field ID for "Booster Campaign Name" for the location
     let fieldId = null;
     try {
-      const fieldsRes = await fetch(`${GHL_API_URL}/customFields?locationId=${locationId}`, {
+      const fieldsRes = await fetch(`${CUSTOM_FIELDS_URL}/?locationId=${locationId}`, {
         headers: { 'Authorization': `Bearer ${GHL_API_KEY}` }
       });
       if (fieldsRes.ok) {
@@ -156,9 +157,10 @@ export default async function handler(req, res) {
         }
       }
     } else {
+      // Do NOT create the field, just return not found for all contacts
       campaignNameResults = contactIds.map(contactId => ({
         contactId, success: false,
-        error: `Custom field "${BOOSTER_CAMPAIGN_NAME_FIELD_NAME}" not found`
+        error: `Custom field "${BOOSTER_CAMPAIGN_NAME_FIELD_NAME}" not found for location`
       }));
     }
   }
