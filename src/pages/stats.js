@@ -57,11 +57,8 @@ export default function StatusPage() {
     async function fetchStats() {
       setLoading(true);
       try {
-        // Get campaign status and current/previous campaign names
-        const [statsRes, customValueRes] = await Promise.all([
-          fetch("/api/get-campaign-status"),
-          fetch("/api/get-custom-value?name=Booster Campaign Name"),
-        ]);
+        // Fetch campaign status (including currentBoosterCampaignName)
+        const statsRes = await fetch("/api/get-campaign-status");
         const statsData = await statsRes.json();
         setBoosterStats({
           previous: statsData.previous,
@@ -71,14 +68,11 @@ export default function StatusPage() {
         if (statsData.count !== undefined) {
           setBoosterHistoryCount(statsData.count);
         }
-        // Use fetched custom value for current campaign name if exists
-        if (customValueRes.ok) {
-          const customValueData = await customValueRes.json();
-          if (customValueData && customValueData.value) {
-            setCurrentBoosterCampaignName(customValueData.value);
-          } else {
-            setCurrentBoosterCampaignName("Current Booster Campaign");
-          }
+        // Use fetched campaign name from /api/get-campaign-status
+        if (statsData.currentBoosterCampaignName) {
+          setCurrentBoosterCampaignName(statsData.currentBoosterCampaignName);
+        } else {
+          setCurrentBoosterCampaignName("Current Booster Campaign");
         }
       } catch (err) {
         setBoosterStats({ previous: 0, current: 0, contacts: [] });
