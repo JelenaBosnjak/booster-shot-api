@@ -55,6 +55,7 @@ export default async function handler(req, res) {
     }
   }
 
+  // Tagging contacts in batches
   for (let i = 0; i < contactIds.length; i += BATCH_SIZE) {
     const batch = contactIds.slice(i, i + BATCH_SIZE);
     const batchResults = await Promise.all(batch.map(tagContact));
@@ -66,7 +67,7 @@ export default async function handler(req, res) {
     }
   }
 
-  // Set Custom Value for Booster Shot Message (location-wide)
+  // Set Custom Value for Booster Shot Message (location-wide), dynamically get the ID
   let customValueResult = null;
   if (boosterShotMessage && locationId) {
     try {
@@ -113,7 +114,7 @@ export default async function handler(req, res) {
     }
   }
 
-  // Set Booster Sms Name as custom field for each contact
+  // Set Booster Sms Name as custom field for each contact, now using PATCH
   let boosterSmsNameResults = [];
   if (boosterCampaignName && contactIds.length > 0 && locationId) {
     let fieldId = null;
@@ -133,7 +134,7 @@ export default async function handler(req, res) {
       for (const contactId of contactIds) {
         try {
           const updateRes = await fetch(`${GHL_API_URL}/${contactId}/customFields`, {
-            method: "POST",
+            method: "PATCH", // PATCH instead of POST
             headers: {
               'Authorization': `Bearer ${GHL_API_KEY}`,
               'Content-Type': 'application/json'
@@ -170,5 +171,6 @@ export default async function handler(req, res) {
     });
   }
 
+  // Success
   return res.status(200).json({ results, customValueResult, boosterSmsNameResults });
 }
