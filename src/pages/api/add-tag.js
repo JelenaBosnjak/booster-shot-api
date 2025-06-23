@@ -4,7 +4,8 @@ const CUSTOM_FIELDS_URL = "https://rest.gohighlevel.com/v1/custom-fields";
 const BATCH_SIZE = 100;
 const BATCH_INTERVAL = 10_000;
 
-const BOOSTER_SMS_NAME_FIELD_NAME = "Booster Sms Name";
+// Field name to search for (case-insensitive, trimmed)
+const SMS_FIELD_NAME = "Sms";
 const BOOSTER_SHOT_CUSTOM_VALUE_NAME = "Booster shot message";
 
 export default async function handler(req, res) {
@@ -114,8 +115,8 @@ export default async function handler(req, res) {
     }
   }
 
-  // Set Booster Sms Name as custom field for each contact, now using PATCH
-  let boosterSmsNameResults = [];
+  // Set Sms as custom field for each contact, using PATCH
+  let smsFieldResults = [];
   if (boosterCampaignName && contactIds.length > 0 && locationId) {
     let fieldId = null;
     try {
@@ -125,7 +126,7 @@ export default async function handler(req, res) {
       if (fieldsRes.ok) {
         const fieldsData = await fieldsRes.json();
         const found = fieldsData.customFields.find(f =>
-          f.name && f.name.trim().toLowerCase() === BOOSTER_SMS_NAME_FIELD_NAME.toLowerCase()
+          f.name && f.name.trim().toLowerCase() === SMS_FIELD_NAME.toLowerCase()
         );
         if (found) fieldId = found.id;
       }
@@ -145,18 +146,18 @@ export default async function handler(req, res) {
           });
           if (!updateRes.ok) {
             const errData = await updateRes.json().catch(() => ({}));
-            boosterSmsNameResults.push({ contactId, success: false, error: errData.error || updateRes.statusText });
+            smsFieldResults.push({ contactId, success: false, error: errData.error || updateRes.statusText });
           } else {
-            boosterSmsNameResults.push({ contactId, success: true });
+            smsFieldResults.push({ contactId, success: true });
           }
         } catch (err) {
-          boosterSmsNameResults.push({ contactId, success: false, error: err.message || 'Unknown error' });
+          smsFieldResults.push({ contactId, success: false, error: err.message || 'Unknown error' });
         }
       }
     } else {
-      boosterSmsNameResults = contactIds.map(contactId => ({
+      smsFieldResults = contactIds.map(contactId => ({
         contactId, success: false,
-        error: `Custom field "${BOOSTER_SMS_NAME_FIELD_NAME}" not found for location`
+        error: `Custom field "${SMS_FIELD_NAME}" not found for location`
       }));
     }
   }
@@ -167,10 +168,10 @@ export default async function handler(req, res) {
       results,
       resetTime,
       customValueResult,
-      boosterSmsNameResults
+      smsFieldResults
     });
   }
 
   // Success
-  return res.status(200).json({ results, customValueResult, boosterSmsNameResults });
+  return res.status(200).json({ results, customValueResult, smsFieldResults });
 }
