@@ -10,23 +10,19 @@ export default async function handler(req, res) {
 
   // Helper: extract all MM/DD/YYYY dates from a string
   function extractBoosterDates(str) {
-    // Match MM/DD/YYYY (with or without leading/trailing spaces and dashes)
     const regex = /(\d{1,2}\/\d{1,2}\/\d{4})/g;
     const matches = (str.match(regex) || []);
-    // Convert to Date objects, filter valid
     return matches
       .map((dateStr) => {
-        // Convert MM/DD/YYYY to YYYY-MM-DD for Date constructor
         const parts = dateStr.split("/");
         if (parts.length !== 3) return null;
-        // Use Date.UTC to avoid timezone issues
         return new Date(`${parts[2]}-${parts[0].padStart(2, "0")}-${parts[1].padStart(2, "0")}`);
       })
       .filter((date) => date instanceof Date && !isNaN(date.getTime()));
   }
 
   try {
-    // 1. Fetch all custom fields to get the ID for "Booster History Data"
+    // 1. Fetch all custom fields to get the ID for "Booster History Data" and "Booster Campaign Name"
     const fieldsUrl = `https://rest.gohighlevel.com/v1/custom-fields/`;
     const fieldsResponse = await fetch(fieldsUrl, {
       headers: {
@@ -48,9 +44,11 @@ export default async function handler(req, res) {
     }
 
     const fieldsData = await fieldsResponse.json();
-    // Always look for "Booster History Data" (case-insensitive)
     const boosterFieldObj = (fieldsData.customFields || []).find(
       (f) => f.name && f.name.toLowerCase() === "booster history data"
+    );
+    const boosterCampaignNameFieldObj = (fieldsData.customFields || []).find(
+      (f) => f.name && f.name.toLowerCase() === "booster campaign name"
     );
 
     if (!boosterFieldObj) {
@@ -60,6 +58,7 @@ export default async function handler(req, res) {
     }
 
     const boosterFieldId = boosterFieldObj.id;
+    const boosterCampaignNameFieldId = boosterCampaignNameFieldObj?.id;
 
     // 2. Fetch contacts
     const ghlUrl = `https://rest.gohighlevel.com/v1/contacts?limit=100`;
@@ -85,18 +84,21 @@ export default async function handler(req, res) {
     const data = await response.json();
     const contacts = data.contacts || [];
 
-    // Build up arrays of all booster dates per contact
+    // Build up arrays of all booster dates per contact and get campaign name field
     const boosterContacts = contacts
       .map((contact) => {
         const boosterFields = (contact.customField || []).filter(
           (field) => field.id === boosterFieldId && !!field.value
         );
-        // There might be more than one value, but usually only one per contact
+        const campaignFields = boosterCampaignNameFieldId
+          ? (contact.customField || []).filter(
+              (field) => field.id === boosterCampaignNameFieldId && !!field.value
+            )
+          : [];
         let allDates = [];
         boosterFields.forEach(field => {
           allDates = allDates.concat(extractBoosterDates(field.value));
         });
-        // Convert to ISO string for easy comparison
         const isoDates = allDates.map(d => d.toISOString().slice(0, 10));
         return {
           id: contact.id,
@@ -107,17 +109,17 @@ export default async function handler(req, res) {
             id: field.id,
             value: field.value,
           })),
-          boosterDates: allDates, // Array of JS Date
-          isoBoosterDates: isoDates // Array of "YYYY-MM-DD"
+          boosterCampaignName:
+            campaignFields.length > 0 ? campaignFields[0].value : null,
+          boosterDates: allDates,
+          isoBoosterDates: isoDates
         };
       })
       .filter((c) => c.boosterDates.length > 0);
 
-    // Now, find the overall earliest/latest booster shot date among all contacts
     let allBoosterDates = [];
     boosterContacts.forEach(c => allBoosterDates = allBoosterDates.concat(c.boosterDates));
     if (allBoosterDates.length === 0) {
-      // No booster dates at all
       return res.status(200).json({
         count: 0,
         contacts: [],
@@ -125,14 +127,11 @@ export default async function handler(req, res) {
         current: 0
       });
     }
-    // Get min and max date as ISO string (YYYY-MM-DD)
     const minDate = new Date(Math.min(...allBoosterDates.map(d => d.getTime())));
     const maxDate = new Date(Math.max(...allBoosterDates.map(d => d.getTime())));
     const minDateIso = minDate.toISOString().slice(0, 10);
     const maxDateIso = maxDate.toISOString().slice(0, 10);
 
-    // Now, for each contact, if their earliest booster date is minDate, count as previous
-    // If their latest booster date is maxDate, count as current
     let previous = 0;
     let current = 0;
     boosterContacts.forEach(c => {
@@ -140,28 +139,19 @@ export default async function handler(req, res) {
       if (c.isoBoosterDates.includes(maxDateIso)) current++;
     });
 
-    // ---- NEW: Fetch the current Booster Campaign Name custom value ----
+    // Find the campaign name that is most common among those with the latest booster date for "current" campaign
     let currentBoosterCampaignName = null;
-    try {
-      const customValuesResp = await fetch("https://rest.gohighlevel.com/v1/custom-values", {
-        headers: {
-          Authorization: `Bearer ${API_TOKEN}`,
-          "Content-Type": "application/json",
-        },
-      });
-      if (customValuesResp.ok) {
-        const customValuesData = await customValuesResp.json();
-        const campaignValue = (customValuesData.customValues || []).find(
-          v => v.name && v.name.trim().toLowerCase() === "booster campaign name"
-        );
-        currentBoosterCampaignName = campaignValue?.value || null;
-      }
-    } catch (e) {
-      // fail silently, just don't provide campaign name
-      currentBoosterCampaignName = null;
+    const currentCampaignNames = boosterContacts
+      .filter(c => c.isoBoosterDates.includes(maxDateIso))
+      .map(c => c.boosterCampaignName)
+      .filter(Boolean);
+    if (currentCampaignNames.length > 0) {
+      // get the most frequent campaign name for current campaign contacts
+      const freq = {};
+      currentCampaignNames.forEach(n => { freq[n] = (freq[n] || 0) + 1; });
+      currentBoosterCampaignName = Object.entries(freq).sort((a, b) => b[1] - a[1])[0][0];
     }
 
-    // Return contacts as before, but without the extra fields, and with campaign name
     return res.status(200).json({
       count: boosterContacts.length,
       contacts: boosterContacts.map(
@@ -169,7 +159,7 @@ export default async function handler(req, res) {
       ),
       previous,
       current,
-      currentBoosterCampaignName // <-- added
+      currentBoosterCampaignName
     });
   } catch (error) {
     return res.status(500).json({ error: error.message || "Internal Server Error" });
