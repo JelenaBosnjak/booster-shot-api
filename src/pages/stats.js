@@ -41,18 +41,27 @@ const previousCampaigns = [
   },
 ];
 
-// Utility: Extracts JS Date from a string like "...; Date: 06/23/2025 17:13:08"
-function extractCampaignDateTime(str) {
-  if (!str) return null;
-  const match = str.match(/Date:\s*(\d{2}\/\d{2}\/\d{4})(?:\s+(\d{2}:\d{2}:\d{2}))?/);
-  if (!match) return null;
-  const [, datePart, timePart] = match;
-  const [month, day, year] = datePart.split('/');
-  let isoString = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-  if (timePart) {
-    isoString += 'T' + timePart;
+// Utility: Extract all campaign launches (as ISO string) from a string like "...; Date: 06/23/2025 17:13 ..."
+function extractAllCampaignDateTimes(str) {
+  if (!str) return [];
+  // Match all: Campaign Name: ...; Date: MM/DD/YYYY [HH:MM]
+  const regex = /Campaign Name:\s*([^;]+);\s*Date:\s*(\d{1,2}\/\d{1,2}\/\d{4})(?:\s+(\d{2}:\d{2}))?/g;
+  let launches = [];
+  let match;
+  while ((match = regex.exec(str)) !== null) {
+    const [_, campaignName, datePart, timePart] = match;
+    const [month, day, year] = datePart.split('/');
+    let isoString = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    if (timePart) {
+      isoString += 'T' + timePart;
+    }
+    launches.push({
+      campaignName: campaignName.trim(),
+      iso: isoString,
+      date: new Date(isoString)
+    });
   }
-  return new Date(isoString);
+  return launches;
 }
 
 export default function StatusPage() {
@@ -70,6 +79,7 @@ export default function StatusPage() {
   // Store the unique campaign time stamps (with name) for current and previous
   const [currentCampaignTimestamp, setCurrentCampaignTimestamp] = useState("");
   const [previousCampaignTimestamp, setPreviousCampaignTimestamp] = useState("");
+  const [totalCampaignLaunches, setTotalCampaignLaunches] = useState(0);
 
   useEffect(() => {
     async function fetchStats() {
@@ -93,21 +103,19 @@ export default function StatusPage() {
         }
 
         // --- Identify unique campaign launches by timestamp ---
-        // Find all campaign launches for the current campaign (by name)
-        // Gather the most recent timestamp for each unique campaign name
-        let currentCampaigns = [];
-        let previousCampaigns = [];
-
-        // Build a flat array of {campaignName, campaignDate: JS Date, rawValue}
         let allCampaignEvents = [];
         (statsData.contacts || []).forEach(contact => {
           (contact.boosterFields || []).forEach(field => {
-            const dt = extractCampaignDateTime(field.value);
-            allCampaignEvents.push({
-              campaignName: contact.boosterCampaignName || "",
-              campaignDate: dt,
-              rawValue: field.value,
-              contactId: contact.id,
+            // Extract ALL launches from this field value!
+            const launches = extractAllCampaignDateTimes(field.value);
+            launches.forEach(launch => {
+              allCampaignEvents.push({
+                campaignName: contact.boosterCampaignName || "",
+                campaignDate: launch.date,
+                iso: launch.iso,
+                rawValue: field.value,
+                contactId: contact.id,
+              });
             });
           });
         });
@@ -118,30 +126,26 @@ export default function StatusPage() {
         // Sort all events by date descending
         allCampaignEvents.sort((a, b) => b.campaignDate - a.campaignDate);
 
-        // Find the latest campaignName+timestamp for "current", and the previous for "previous"
+        // Find unique launches for the current campaign name (by ISO)
         let uniqueCampaigns = [];
         let seen = {};
-        // Key: campaignName + campaignDate ISO string
         allCampaignEvents.forEach(ev => {
-          const key = `${ev.campaignName}|${ev.campaignDate.toISOString()}`;
-          if (!seen[key]) {
+          const key = `${ev.campaignName}|${ev.iso}`;
+          if (!seen[key] && ev.campaignName === statsData.currentBoosterCampaignName) {
             uniqueCampaigns.push(ev);
             seen[key] = true;
           }
         });
 
-        // Get unique launches for the current campaign name
-        const launchesForCurrentName = uniqueCampaigns.filter(ev => ev.campaignName === statsData.currentBoosterCampaignName);
+        setTotalCampaignLaunches(uniqueCampaigns.length);
 
-        // If more than one launch for the same day, sort by date+time
-        // The most recent is "current", the one before is "previous"
-        if (launchesForCurrentName.length > 0) {
+        if (uniqueCampaigns.length > 0) {
           setCurrentCampaignTimestamp(
-            launchesForCurrentName[0].campaignDate.toLocaleString()
+            uniqueCampaigns[0].campaignDate.toLocaleString()
           );
-          if (launchesForCurrentName[1]) {
+          if (uniqueCampaigns[1]) {
             setPreviousCampaignTimestamp(
-              launchesForCurrentName[1].campaignDate.toLocaleString()
+              uniqueCampaigns[1].campaignDate.toLocaleString()
             );
           } else {
             setPreviousCampaignTimestamp(""); // No prior
@@ -150,13 +154,13 @@ export default function StatusPage() {
           setCurrentCampaignTimestamp("");
           setPreviousCampaignTimestamp("");
         }
-
       } catch (err) {
         setBoosterStats({ previous: 0, current: 0, contacts: [] });
         setBoosterHistoryCount(null);
         setCurrentBoosterCampaignName("Current Booster Campaign");
         setCurrentCampaignTimestamp("");
         setPreviousCampaignTimestamp("");
+        setTotalCampaignLaunches(0);
       }
       setLoading(false);
     }
@@ -168,8 +172,11 @@ export default function StatusPage() {
   const sortedContacts = (boosterStats.contacts || []).slice().sort((a, b) => {
     const aValue = a.boosterFields?.[0]?.value;
     const bValue = b.boosterFields?.[0]?.value;
-    const aDate = extractCampaignDateTime(aValue);
-    const bDate = extractCampaignDateTime(bValue);
+    // Use the first found date (old logic, just for display)
+    const aLaunches = extractAllCampaignDateTimes(aValue);
+    const bLaunches = extractAllCampaignDateTimes(bValue);
+    const aDate = aLaunches[0]?.date;
+    const bDate = bLaunches[0]?.date;
     if (!aDate && !bDate) return 0;
     if (!aDate) return 1;
     if (!bDate) return -1;
@@ -565,6 +572,13 @@ export default function StatusPage() {
               {currentCampaignTimestamp || "N/A"}
             </span>
           </div>
+          {/* New: Total Campaigns Counter */}
+          <div style={{ ...styles.campaignTimeRow, marginBottom: "12px" }}>
+            <span>
+              <span style={{ fontWeight: 700, color: COLOR_CORAL }}>Total Campaigns:</span>{" "}
+              {totalCampaignLaunches}
+            </span>
+          </div>
           {/* Debug block below campaign time */}
           <div style={styles.debugBlock}>
             <b>Number of Contacts with custom field Booster:</b>{" "}
@@ -577,8 +591,9 @@ export default function StatusPage() {
                     <li key={c.id}>
                       {c.firstName} {c.lastName} ({c.phone || "No phone"}) |{" "}
                       {c.boosterFields.map(f => {
-                        const dt = extractCampaignDateTime(f.value);
-                        return dt ? dt.toLocaleString() : f.value;
+                        // Show ALL launches, not just one
+                        const launches = extractAllCampaignDateTimes(f.value);
+                        return launches.map(l => l.date.toLocaleString()).join(", ");
                       }).join(", ")}
                     </li>
                   )}
