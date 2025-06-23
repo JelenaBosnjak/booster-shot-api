@@ -8,25 +8,20 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Missing API token" });
   }
 
-  // Extract all campaign launches (name + datetime) from a booster field string
-  function extractAllCampaignLaunches(str) {
+  // Extract all campaign launches (timestamp) from a booster field string
+  function extractAllCampaignTimestamps(str) {
     if (!str) return [];
-    const regex = /Campaign Name:\s*([^;]+);\s*Date:\s*(\d{1,2}\/\d{1,2}\/\d{4})(?:\s+(\d{2}:\d{2}))?/g;
+    const regex = /Date:\s*(\d{1,2}\/\d{1,2}\/\d{4})(?:\s+(\d{2}:\d{2}))?/g;
     let launches = [];
     let match;
     while ((match = regex.exec(str)) !== null) {
-      const [_, campaignName, datePart, timePart] = match;
+      const [_, datePart, timePart] = match;
       const [month, day, year] = datePart.split('/');
       let isoString = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
       if (timePart) {
         isoString += 'T' + timePart;
       }
-      launches.push({
-        campaignName: campaignName.trim(),
-        campaignDate: new Date(isoString),
-        iso: isoString,
-        raw: match[0]
-      });
+      launches.push(isoString);
     }
     return launches;
   }
@@ -90,33 +85,21 @@ export default async function handler(req, res) {
     const data = await response.json();
     const contacts = data.contacts || [];
 
-    // Fetch custom value for Booster Campaign Name (location-wide)
-    let boosterCampaignName = null;
-    const locationId = contacts[0]?.locationId;
-    if (locationId) {
-      const customValuesRes = await fetch(
-        `https://rest.gohighlevel.com/v1/custom-values?locationId=${locationId}`,
-        { headers: { Authorization: `Bearer ${API_TOKEN}` } }
-      );
-      if (customValuesRes.ok) {
-        const customValuesData = await customValuesRes.json();
-        const customValue = (customValuesData.customValues || []).find(
-          v => v.name && v.name.trim().toLowerCase() === "booster campaign name"
-        );
-        if (customValue) boosterCampaignName = customValue.value || null;
-      }
-    }
-
-    // Extract all launches for all contacts
-    let allLaunches = [];
+    // Extract all campaign timestamps for all contacts
+    let timestampToContacts = {};
     const boosterContacts = contacts
       .map((contact) => {
         const boosterFields = (contact.customField || []).filter(
           (field) => field.id === boosterFieldId && !!field.value
         );
-        let launches = [];
+        let allTimestamps = [];
         boosterFields.forEach(field => {
-          launches = launches.concat(extractAllCampaignLaunches(field.value));
+          const launches = extractAllCampaignTimestamps(field.value);
+          launches.forEach(ts => {
+            allTimestamps.push(ts);
+            if (!timestampToContacts[ts]) timestampToContacts[ts] = new Set();
+            timestampToContacts[ts].add(contact.id);
+          });
         });
         return {
           id: contact.id,
@@ -127,51 +110,29 @@ export default async function handler(req, res) {
             id: field.id,
             value: field.value,
           })),
-          launches
+          campaignTimestamps: allTimestamps
         };
       })
-      .filter(c => c.launches.length > 0);
+      .filter(c => c.campaignTimestamps.length > 0);
 
-    // Flatten all launches for all contacts
-    boosterContacts.forEach(c => {
-      c.launches.forEach(l => {
-        allLaunches.push({
-          ...l,
-          contactId: c.id
-        });
-      });
-    });
+    // All unique campaign timestamps, sorted descending (latest first)
+    const allTimestampsSorted = Object.keys(timestampToContacts).sort((a, b) => new Date(b) - new Date(a));
 
-    // Only consider launches for the current campaign name
-    const currentCampaignName = boosterCampaignName;
-    const currentNameLaunches = allLaunches.filter(l => l.campaignName === currentCampaignName);
+    const currentTimestamp = allTimestampsSorted[0] || null;
+    const previousTimestamp = allTimestampsSorted[1] || null;
 
-    // Find all unique ISO datetime launches (campaign runs) for this name
-    const uniqueIsoLaunches = Array.from(new Set(currentNameLaunches.map(l => l.iso)));
-    // Sort descending (latest first)
-    uniqueIsoLaunches.sort((a, b) => new Date(b) - new Date(a));
-
-    // Determine current and previous campaign timestamps
-    const currentIso = uniqueIsoLaunches[0] || null;
-    const previousIso = uniqueIsoLaunches[1] || null;
-
-    // Count contacts with the latest and previous timestamp
-    const contactsWithCurrent = new Set(
-      currentNameLaunches.filter(l => l.iso === currentIso).map(l => l.contactId)
-    );
-    const contactsWithPrevious = new Set(
-      currentNameLaunches.filter(l => l.iso === previousIso).map(l => l.contactId)
-    );
+    const contactsWithCurrent = currentTimestamp ? Array.from(timestampToContacts[currentTimestamp]) : [];
+    const contactsWithPrevious = previousTimestamp ? Array.from(timestampToContacts[previousTimestamp]) : [];
 
     return res.status(200).json({
       count: boosterContacts.length,
-      contacts: boosterContacts.map(({ launches, ...rest }) => rest),
-      previous: contactsWithPrevious.size,
-      current: contactsWithCurrent.size,
-      currentBoosterCampaignName: currentCampaignName,
-      currentCampaignTimestamp: currentIso ? new Date(currentIso).toISOString() : null,
-      previousCampaignTimestamp: previousIso ? new Date(previousIso).toISOString() : null,
-      totalCampaigns: uniqueIsoLaunches.length
+      contacts: boosterContacts,
+      previous: contactsWithPrevious.length,
+      current: contactsWithCurrent.length,
+      currentBoosterCampaignName: null,
+      currentCampaignTimestamp: currentTimestamp ? new Date(currentTimestamp).toISOString() : null,
+      previousCampaignTimestamp: previousTimestamp ? new Date(previousTimestamp).toISOString() : null,
+      totalCampaigns: allTimestampsSorted.length
     });
   } catch (error) {
     return res.status(500).json({ error: error.message || "Internal Server Error" });
