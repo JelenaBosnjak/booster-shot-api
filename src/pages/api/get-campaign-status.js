@@ -90,9 +90,9 @@ export default async function handler(req, res) {
 
     // Extract all campaign timestamps & names for all contacts
     // timestampToContacts: { [iso]: Set(contactId) }
-    // timestampToName: { [iso]: campaignName }
+    // timestampToNames: { [iso]: Set(campaignName) }
     let timestampToContacts = {};
-    let timestampToName = {};
+    let timestampToNames = {};
     const boosterContacts = contacts
       .map((contact) => {
         const boosterFields = (contact.customField || []).filter(
@@ -105,7 +105,8 @@ export default async function handler(req, res) {
             allTimestamps.push(iso);
             if (!timestampToContacts[iso]) timestampToContacts[iso] = new Set();
             timestampToContacts[iso].add(contact.id);
-            timestampToName[iso] = campaignName;
+            if (!timestampToNames[iso]) timestampToNames[iso] = new Set();
+            timestampToNames[iso].add(campaignName);
           });
         });
         return {
@@ -131,13 +132,20 @@ export default async function handler(req, res) {
     const contactsWithCurrent = currentTimestamp ? Array.from(timestampToContacts[currentTimestamp]) : [];
     const contactsWithPrevious = previousTimestamp ? Array.from(timestampToContacts[previousTimestamp]) : [];
 
+    // Get the campaign names for each timestamp (join if multiple names)
+    const getNamesForTimestamp = (ts) => {
+      if (!ts || !timestampToNames[ts]) return null;
+      const arr = Array.from(timestampToNames[ts]);
+      return arr.length === 1 ? arr[0] : arr.join(", ");
+    };
+
     return res.status(200).json({
       count: boosterContacts.length,
       contacts: boosterContacts,
       previous: contactsWithPrevious.length,
       current: contactsWithCurrent.length,
-      currentBoosterCampaignName: currentTimestamp ? timestampToName[currentTimestamp] : null,
-      previousBoosterCampaignName: previousTimestamp ? timestampToName[previousTimestamp] : null,
+      currentBoosterCampaignName: getNamesForTimestamp(currentTimestamp),
+      previousBoosterCampaignName: getNamesForTimestamp(previousTimestamp),
       currentCampaignTimestamp: currentTimestamp ? new Date(currentTimestamp).toISOString() : null,
       previousCampaignTimestamp: previousTimestamp ? new Date(previousTimestamp).toISOString() : null,
       totalCampaigns: allTimestampsSorted.length
