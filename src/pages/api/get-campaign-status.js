@@ -8,17 +8,16 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Missing API token" });
   }
 
-  // Helper: extract full MM/DD/YYYY HH:MM:SS from a string like "...; Date: 06/23/2025 17:13:08"
+  // Helper: extract MM/DD/YYYY HH:MM from a string like "...; Date: 06/23/2025 17:13"
   function extractCampaignDateTime(str) {
     if (!str) return null;
-    const match = str.match(/Date:\s*(\d{2}\/\d{2}\/\d{4})(?:\s+(\d{2}:\d{2}:\d{2}))?/);
+    // Match "Date: MM/DD/YYYY HH:MM" (no seconds)
+    const match = str.match(/Date:\s*(\d{2}\/\d{2}\/\d{4})\s+(\d{2}:\d{2})/);
     if (!match) return null;
     const [, datePart, timePart] = match;
     const [month, day, year] = datePart.split('/');
-    let isoString = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-    if (timePart) {
-      isoString += 'T' + timePart;
-    }
+    // Compose ISO string without seconds, e.g. "2025-06-23T17:13"
+    let isoString = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${timePart}`;
     return new Date(isoString);
   }
 
@@ -107,7 +106,7 @@ export default async function handler(req, res) {
         let allDates = [];
         let allDateTimes = [];
         boosterFields.forEach(field => {
-          // Extract full datetime
+          // Extract full datetime (no seconds)
           const dt = extractCampaignDateTime(field.value);
           if (dt) allDateTimes.push(dt);
           // For compatibility, keep only date for isoBoosterDates
@@ -186,8 +185,6 @@ export default async function handler(req, res) {
         previousCampaignTimestamp = launchesForCurrentName[1].campaignDate.toISOString();
       }
     }
-
-    // For legacy fields: still provide previous/current counts, but now you can distinguish by full timestamp if needed in frontend
 
     let allBoosterDates = [];
     boosterContacts.forEach(c => allBoosterDates = allBoosterDates.concat(c.boosterDates));
