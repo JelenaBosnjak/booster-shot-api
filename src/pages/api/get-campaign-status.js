@@ -8,17 +8,18 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Missing API token" });
   }
 
-  // Helper: extract all MM/DD/YYYY dates from a string
-  function extractBoosterDates(str) {
-    const regex = /(\d{1,2}\/\d{1,2}\/\d{4})/g;
-    const matches = (str.match(regex) || []);
-    return matches
-      .map((dateStr) => {
-        const parts = dateStr.split("/");
-        if (parts.length !== 3) return null;
-        return new Date(`${parts[2]}-${parts[0].padStart(2, "0")}-${parts[1].padStart(2, "0")}`);
-      })
-      .filter((date) => date instanceof Date && !isNaN(date.getTime()));
+  // Helper: extract full MM/DD/YYYY HH:MM:SS from a string like "...; Date: 06/23/2025 17:13:08"
+  function extractCampaignDateTime(str) {
+    if (!str) return null;
+    const match = str.match(/Date:\s*(\d{2}\/\d{2}\/\d{4})(?:\s+(\d{2}:\d{2}:\d{2}))?/);
+    if (!match) return null;
+    const [, datePart, timePart] = match;
+    const [month, day, year] = datePart.split('/');
+    let isoString = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    if (timePart) {
+      isoString += 'T' + timePart;
+    }
+    return new Date(isoString);
   }
 
   try {
@@ -80,10 +81,7 @@ export default async function handler(req, res) {
     const data = await response.json();
     const contacts = data.contacts || [];
 
-    // --- NEW: Fetch custom value for Booster Campaign Name (location-wide) ---
-    // You may want to get locationId from query or from one of the contacts.
-    // If your app is single-location, you can hardcode it or pass it as a query param.
-    // For multi-location, adapt as needed.
+    // Fetch custom value for Booster Campaign Name (location-wide)
     let boosterCampaignName = null;
     const locationId = contacts[0]?.locationId; // Use first contact's locationId if available
     if (locationId) {
@@ -100,15 +98,30 @@ export default async function handler(req, res) {
       }
     }
 
-    // --- Build up arrays of all booster dates per contact ---
+    // Build up arrays of all booster fields per contact, including full datetime
     const boosterContacts = contacts
       .map((contact) => {
         const boosterFields = (contact.customField || []).filter(
           (field) => field.id === boosterFieldId && !!field.value
         );
         let allDates = [];
+        let allDateTimes = [];
         boosterFields.forEach(field => {
-          allDates = allDates.concat(extractBoosterDates(field.value));
+          // Extract full datetime
+          const dt = extractCampaignDateTime(field.value);
+          if (dt) allDateTimes.push(dt);
+          // For compatibility, keep only date for isoBoosterDates
+          const regex = /(\d{1,2}\/\d{1,2}\/\d{4})/g;
+          const matches = (field.value.match(regex) || []);
+          matches.forEach((dateStr) => {
+            const parts = dateStr.split("/");
+            if (parts.length === 3) {
+              const date = new Date(`${parts[2]}-${parts[0].padStart(2, "0")}-${parts[1].padStart(2, "0")}`);
+              if (date instanceof Date && !isNaN(date.getTime())) {
+                allDates.push(date);
+              }
+            }
+          });
         });
         const isoDates = allDates.map(d => d.toISOString().slice(0, 10));
         return {
@@ -122,10 +135,59 @@ export default async function handler(req, res) {
           })),
           boosterCampaignName,
           boosterDates: allDates,
+          boosterDateTimes: allDateTimes,
           isoBoosterDates: isoDates
         };
       })
       .filter((c) => c.boosterDates.length > 0);
+
+    // Build a flat array of all campaign events: {campaignName, campaignDate: JS Date, rawValue}
+    let allCampaignEvents = [];
+    boosterContacts.forEach(contact => {
+      (contact.boosterFields || []).forEach(field => {
+        const dt = extractCampaignDateTime(field.value);
+        if (dt) {
+          allCampaignEvents.push({
+            campaignName: contact.boosterCampaignName || "",
+            campaignDate: dt,
+            rawValue: field.value,
+            contactId: contact.id,
+          });
+        }
+      });
+    });
+    // Only keep events with campaignDate and campaignName
+    allCampaignEvents = allCampaignEvents.filter(ev => ev.campaignDate && ev.campaignName);
+
+    // Sort all events by date descending
+    allCampaignEvents.sort((a, b) => b.campaignDate - a.campaignDate);
+
+    // Group by campaignName + campaignDate ISO string to get unique launches
+    let uniqueCampaigns = [];
+    let seen = {};
+    allCampaignEvents.forEach(ev => {
+      const key = `${ev.campaignName}|${ev.campaignDate.toISOString()}`;
+      if (!seen[key]) {
+        uniqueCampaigns.push(ev);
+        seen[key] = true;
+      }
+    });
+
+    // Get unique launches for the current campaign name
+    const launchesForCurrentName = uniqueCampaigns.filter(ev => ev.campaignName === boosterCampaignName);
+
+    // If more than one launch for the same day, sort by date+time
+    // The most recent is "current", the one before is "previous"
+    let currentCampaignTimestamp = null;
+    let previousCampaignTimestamp = null;
+    if (launchesForCurrentName.length > 0) {
+      currentCampaignTimestamp = launchesForCurrentName[0].campaignDate.toISOString();
+      if (launchesForCurrentName[1]) {
+        previousCampaignTimestamp = launchesForCurrentName[1].campaignDate.toISOString();
+      }
+    }
+
+    // For legacy fields: still provide previous/current counts, but now you can distinguish by full timestamp if needed in frontend
 
     let allBoosterDates = [];
     boosterContacts.forEach(c => allBoosterDates = allBoosterDates.concat(c.boosterDates));
@@ -149,17 +211,16 @@ export default async function handler(req, res) {
       if (c.isoBoosterDates.includes(maxDateIso)) current++;
     });
 
-    // The most common campaign name among latest booster contacts (they all have the same, now from custom value)
-    let currentBoosterCampaignName = boosterCampaignName;
-
     return res.status(200).json({
       count: boosterContacts.length,
       contacts: boosterContacts.map(
-        ({ boosterDates, isoBoosterDates, ...rest }) => rest
+        ({ boosterDates, boosterDateTimes, isoBoosterDates, ...rest }) => rest
       ),
       previous,
       current,
-      currentBoosterCampaignName
+      currentBoosterCampaignName: boosterCampaignName,
+      currentCampaignTimestamp,
+      previousCampaignTimestamp
     });
   } catch (error) {
     return res.status(500).json({ error: error.message || "Internal Server Error" });

@@ -41,6 +41,20 @@ const previousCampaigns = [
   },
 ];
 
+// Utility: Extracts JS Date from a string like "...; Date: 06/23/2025 17:13:08"
+function extractCampaignDateTime(str) {
+  if (!str) return null;
+  const match = str.match(/Date:\s*(\d{2}\/\d{2}\/\d{4})(?:\s+(\d{2}:\d{2}:\d{2}))?/);
+  if (!match) return null;
+  const [, datePart, timePart] = match;
+  const [month, day, year] = datePart.split('/');
+  let isoString = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  if (timePart) {
+    isoString += 'T' + timePart;
+  }
+  return new Date(isoString);
+}
+
 export default function StatusPage() {
   const [activeTab, setActiveTab] = useState("current"); // "previous" or "current"
   const [selectedPrevIndex, setSelectedPrevIndex] = useState(2); // default to "Spring Glow Campaign"
@@ -52,6 +66,10 @@ export default function StatusPage() {
   const [loading, setLoading] = useState(true);
   const [currentBoosterCampaignName, setCurrentBoosterCampaignName] = useState("Current Booster Campaign");
   const [previousBoosterCampaignName, setPreviousBoosterCampaignName] = useState(selectedPrev.name);
+
+  // Store the unique campaign time stamps (with name) for current and previous
+  const [currentCampaignTimestamp, setCurrentCampaignTimestamp] = useState("");
+  const [previousCampaignTimestamp, setPreviousCampaignTimestamp] = useState("");
 
   useEffect(() => {
     async function fetchStats() {
@@ -68,16 +86,77 @@ export default function StatusPage() {
         if (statsData.count !== undefined) {
           setBoosterHistoryCount(statsData.count);
         }
-        // Use fetched campaign name from /api/get-campaign-status
         if (statsData.currentBoosterCampaignName) {
           setCurrentBoosterCampaignName(statsData.currentBoosterCampaignName);
         } else {
           setCurrentBoosterCampaignName("Current Booster Campaign");
         }
+
+        // --- Identify unique campaign launches by timestamp ---
+        // Find all campaign launches for the current campaign (by name)
+        // Gather the most recent timestamp for each unique campaign name
+        let currentCampaigns = [];
+        let previousCampaigns = [];
+
+        // Build a flat array of {campaignName, campaignDate: JS Date, rawValue}
+        let allCampaignEvents = [];
+        (statsData.contacts || []).forEach(contact => {
+          (contact.boosterFields || []).forEach(field => {
+            const dt = extractCampaignDateTime(field.value);
+            allCampaignEvents.push({
+              campaignName: contact.boosterCampaignName || "",
+              campaignDate: dt,
+              rawValue: field.value,
+              contactId: contact.id,
+            });
+          });
+        });
+        // Only keep events with campaignDate and campaignName
+        allCampaignEvents = allCampaignEvents.filter(ev => ev.campaignDate && ev.campaignName);
+
+        // Group by campaignName + full ISO date time string
+        // Sort all events by date descending
+        allCampaignEvents.sort((a, b) => b.campaignDate - a.campaignDate);
+
+        // Find the latest campaignName+timestamp for "current", and the previous for "previous"
+        let uniqueCampaigns = [];
+        let seen = {};
+        // Key: campaignName + campaignDate ISO string
+        allCampaignEvents.forEach(ev => {
+          const key = `${ev.campaignName}|${ev.campaignDate.toISOString()}`;
+          if (!seen[key]) {
+            uniqueCampaigns.push(ev);
+            seen[key] = true;
+          }
+        });
+
+        // Get unique launches for the current campaign name
+        const launchesForCurrentName = uniqueCampaigns.filter(ev => ev.campaignName === statsData.currentBoosterCampaignName);
+
+        // If more than one launch for the same day, sort by date+time
+        // The most recent is "current", the one before is "previous"
+        if (launchesForCurrentName.length > 0) {
+          setCurrentCampaignTimestamp(
+            launchesForCurrentName[0].campaignDate.toLocaleString()
+          );
+          if (launchesForCurrentName[1]) {
+            setPreviousCampaignTimestamp(
+              launchesForCurrentName[1].campaignDate.toLocaleString()
+            );
+          } else {
+            setPreviousCampaignTimestamp(""); // No prior
+          }
+        } else {
+          setCurrentCampaignTimestamp("");
+          setPreviousCampaignTimestamp("");
+        }
+
       } catch (err) {
         setBoosterStats({ previous: 0, current: 0, contacts: [] });
         setBoosterHistoryCount(null);
         setCurrentBoosterCampaignName("Current Booster Campaign");
+        setCurrentCampaignTimestamp("");
+        setPreviousCampaignTimestamp("");
       }
       setLoading(false);
     }
@@ -85,14 +164,16 @@ export default function StatusPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Sort contacts by booster field value (date) ascending (earliest first)
+  // Sort contacts by full DateTime for most recent launches
   const sortedContacts = (boosterStats.contacts || []).slice().sort((a, b) => {
-    const aDate = a.boosterFields?.[0]?.value;
-    const bDate = b.boosterFields?.[0]?.value;
+    const aValue = a.boosterFields?.[0]?.value;
+    const bValue = b.boosterFields?.[0]?.value;
+    const aDate = extractCampaignDateTime(aValue);
+    const bDate = extractCampaignDateTime(bValue);
     if (!aDate && !bDate) return 0;
     if (!aDate) return 1;
     if (!bDate) return -1;
-    return new Date(aDate) - new Date(bDate);
+    return aDate - bDate;
   });
 
   const styles = {
@@ -481,7 +562,7 @@ export default function StatusPage() {
           <div style={styles.campaignTimeRow}>
             <span>
               <span style={{ fontWeight: 700, color: COLOR_CORAL }}>Campaign Time:</span>{" "}
-              {new Date().toLocaleString()}
+              {currentCampaignTimestamp || "N/A"}
             </span>
           </div>
           {/* Debug block below campaign time */}
@@ -494,7 +575,11 @@ export default function StatusPage() {
                 <ul style={{ margin: 0, paddingLeft: 18 }}>
                   {sortedContacts.slice(0, 10).map(c =>
                     <li key={c.id}>
-                      {c.firstName} {c.lastName} ({c.phone || "No phone"}) | {c.boosterFields.map(f => f.value).join(", ")}
+                      {c.firstName} {c.lastName} ({c.phone || "No phone"}) |{" "}
+                      {c.boosterFields.map(f => {
+                        const dt = extractCampaignDateTime(f.value);
+                        return dt ? dt.toLocaleString() : f.value;
+                      }).join(", ")}
                     </li>
                   )}
                   {sortedContacts.length > 10 && <li>...and more</li>}
@@ -513,6 +598,12 @@ export default function StatusPage() {
                 </span>
               </div>
               <div style={styles.cardRow}>
+                <span style={styles.cardLabel}>Time:</span>
+                <span style={styles.cardValue}>
+                  {previousCampaignTimestamp || "N/A"}
+                </span>
+              </div>
+              <div style={styles.cardRow}>
                 <span style={styles.cardLabel}>Total Added:</span>
                 <span style={styles.cardValue}>
                   {loading ? "Loading..." : boosterStats.previous}
@@ -526,6 +617,12 @@ export default function StatusPage() {
                 <span style={styles.cardLabel}>Campaign Name:</span>
                 <span style={styles.cardValue}>
                   {currentBoosterCampaignName}
+                </span>
+              </div>
+              <div style={styles.cardRow}>
+                <span style={styles.cardLabel}>Time:</span>
+                <span style={styles.cardValue}>
+                  {currentCampaignTimestamp || "N/A"}
                 </span>
               </div>
               <div style={styles.cardRow}>
