@@ -44,7 +44,6 @@ const previousCampaigns = [
 // Utility: Extract all campaign launches (as ISO string) from a string like "...; Date: 06/23/2025 17:13 ..."
 function extractAllCampaignDateTimes(str) {
   if (!str) return [];
-  // Match all: Campaign Name: ...; Date: MM/DD/YYYY [HH:MM]
   const regex = /Campaign Name:\s*([^;]+);\s*Date:\s*(\d{1,2}\/\d{1,2}\/\d{4})(?:\s+(\d{2}:\d{2}))?/g;
   let launches = [];
   let match;
@@ -65,18 +64,16 @@ function extractAllCampaignDateTimes(str) {
 }
 
 export default function StatusPage() {
-  const [activeTab, setActiveTab] = useState("current"); // "previous" or "current"
+  const [activeTab, setActiveTab] = useState("current");
   const [selectedPrevIndex, setSelectedPrevIndex] = useState(2); // default to "Spring Glow Campaign"
   const selectedPrev = previousCampaigns[selectedPrevIndex] || previousCampaigns[0];
 
-  // --- Campaign Status from API ---
   const [boosterStats, setBoosterStats] = useState({ previous: 0, current: 0, contacts: [] });
   const [boosterHistoryCount, setBoosterHistoryCount] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [currentBoosterCampaignName, setCurrentBoosterCampaignName] = useState("Current Booster Campaign");
-  const [previousBoosterCampaignName, setPreviousBoosterCampaignName] = useState(selectedPrev.name);
 
-  // Store the unique campaign time stamps (with name) for current and previous
+  const [currentBoosterCampaignName, setCurrentBoosterCampaignName] = useState("");
+  const [previousBoosterCampaignName, setPreviousBoosterCampaignName] = useState("");
   const [currentCampaignTimestamp, setCurrentCampaignTimestamp] = useState("");
   const [previousCampaignTimestamp, setPreviousCampaignTimestamp] = useState("");
   const [totalCampaignLaunches, setTotalCampaignLaunches] = useState(0);
@@ -85,7 +82,6 @@ export default function StatusPage() {
     async function fetchStats() {
       setLoading(true);
       try {
-        // Fetch campaign status (including currentBoosterCampaignName)
         const statsRes = await fetch("/api/get-campaign-status");
         const statsData = await statsRes.json();
         setBoosterStats({
@@ -96,66 +92,19 @@ export default function StatusPage() {
         if (statsData.count !== undefined) {
           setBoosterHistoryCount(statsData.count);
         }
-        if (statsData.currentBoosterCampaignName) {
-          setCurrentBoosterCampaignName(statsData.currentBoosterCampaignName);
-        } else {
-          setCurrentBoosterCampaignName("Current Booster Campaign");
-        }
-
-        // Use backend-provided totalCampaigns if present, else fallback to frontend extraction logic
         if (typeof statsData.totalCampaigns === "number") {
           setTotalCampaignLaunches(statsData.totalCampaigns);
-        } else {
-          // Fallback frontend logic
-          let allCampaignEvents = [];
-          (statsData.contacts || []).forEach(contact => {
-            (contact.boosterFields || []).forEach(field => {
-              // Extract ALL launches from this field value!
-              const launches = extractAllCampaignDateTimes(field.value);
-              launches.forEach(launch => {
-                allCampaignEvents.push({
-                  campaignName: contact.boosterCampaignName || "",
-                  campaignDate: launch.date,
-                  iso: launch.iso,
-                  rawValue: field.value,
-                  contactId: contact.id,
-                });
-              });
-            });
-          });
-          // Only keep events with campaignDate and campaignName
-          allCampaignEvents = allCampaignEvents.filter(ev => ev.campaignDate && ev.campaignName);
-          // Group by campaignName + full ISO date time string for current campaign only
-          let uniqueCampaigns = [];
-          let seen = {};
-          allCampaignEvents.forEach(ev => {
-            const key = `${ev.campaignName}|${ev.iso}`;
-            if (!seen[key] && ev.campaignName === statsData.currentBoosterCampaignName) {
-              uniqueCampaigns.push(ev);
-              seen[key] = true;
-            }
-          });
-          setTotalCampaignLaunches(uniqueCampaigns.length);
         }
-
-        if (statsData.currentCampaignTimestamp) {
-          setCurrentCampaignTimestamp(
-            new Date(statsData.currentCampaignTimestamp).toLocaleString()
-          );
-        } else {
-          setCurrentCampaignTimestamp("");
-        }
-        if (statsData.previousCampaignTimestamp) {
-          setPreviousCampaignTimestamp(
-            new Date(statsData.previousCampaignTimestamp).toLocaleString()
-          );
-        } else {
-          setPreviousCampaignTimestamp(""); // No prior
-        }
+        // Use the backend provided campaign names and timestamps
+        setCurrentBoosterCampaignName(statsData.currentBoosterCampaignName || "Current Booster Campaign");
+        setPreviousBoosterCampaignName(statsData.previousBoosterCampaignName || "Previous Booster Campaign");
+        setCurrentCampaignTimestamp(statsData.currentCampaignTimestamp ? new Date(statsData.currentCampaignTimestamp).toLocaleString() : "");
+        setPreviousCampaignTimestamp(statsData.previousCampaignTimestamp ? new Date(statsData.previousCampaignTimestamp).toLocaleString() : "");
       } catch (err) {
         setBoosterStats({ previous: 0, current: 0, contacts: [] });
         setBoosterHistoryCount(null);
         setCurrentBoosterCampaignName("Current Booster Campaign");
+        setPreviousBoosterCampaignName("Previous Booster Campaign");
         setCurrentCampaignTimestamp("");
         setPreviousCampaignTimestamp("");
         setTotalCampaignLaunches(0);
@@ -163,14 +112,11 @@ export default function StatusPage() {
       setLoading(false);
     }
     fetchStats();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Sort contacts by full DateTime for most recent launches
   const sortedContacts = (boosterStats.contacts || []).slice().sort((a, b) => {
     const aValue = a.boosterFields?.[0]?.value;
     const bValue = b.boosterFields?.[0]?.value;
-    // Use the first found date (old logic, just for display)
     const aLaunches = extractAllCampaignDateTimes(aValue);
     const bLaunches = extractAllCampaignDateTimes(bValue);
     const aDate = aLaunches[0]?.date;
@@ -188,7 +134,7 @@ export default function StatusPage() {
       fontFamily: "Inter, Arial, sans-serif",
       color: COLOR_DARK,
       padding: "0",
-      margin: "0",
+      margin: "0"
     },
     header: {
       display: "flex",
@@ -198,12 +144,12 @@ export default function StatusPage() {
       boxShadow: "0 2px 8px rgba(35,36,58,0.05)",
       padding: "16px 32px",
       borderBottom: `1.5px solid ${COLOR_GRAY}`,
-      gap: 18,
+      gap: 18
     },
     leftHeader: {
       display: "flex",
       alignItems: "center",
-      gap: 18,
+      gap: 18
     },
     back: {
       color: COLOR_CORAL,
@@ -214,21 +160,21 @@ export default function StatusPage() {
       cursor: "pointer",
       border: "none",
       background: "none",
-      padding: 0,
+      padding: 0
     },
     headTitle: {
       fontWeight: 900,
       fontSize: "1.45rem",
       textAlign: "left",
       color: COLOR_PRIMARY,
-      letterSpacing: "-1px",
+      letterSpacing: "-1px"
     },
     logo: {
       width: 110,
       height: 44,
       objectFit: "contain",
       marginLeft: 18,
-      marginRight: 0,
+      marginRight: 0
     },
     tabRow: {
       display: "flex",
@@ -237,7 +183,7 @@ export default function StatusPage() {
       gap: 18,
       background: COLOR_WHITE,
       borderBottom: `1.5px solid ${COLOR_GRAY}`,
-      padding: "16px 0",
+      padding: "16px 0"
     },
     tab: {
       padding: "12px 38px",
@@ -249,19 +195,19 @@ export default function StatusPage() {
       color: COLOR_CORAL,
       cursor: "pointer",
       fontSize: "1.09rem",
-      transition: "background 0.14s, color 0.14s",
+      transition: "background 0.14s, color 0.14s"
     },
     tabActive: {
       background: COLOR_CORAL,
       color: COLOR_WHITE,
       border: `1.5px solid ${COLOR_CORAL}`,
-      borderBottom: "none",
+      borderBottom: "none"
     },
     contentRow: {
       display: "flex",
       justifyContent: "center",
       gap: "48px",
-      margin: "40px 0 36px 0",
+      margin: "40px 0 36px 0"
     },
     card: {
       background: COLOR_WHITE,
@@ -273,31 +219,31 @@ export default function StatusPage() {
       border: `1.5px solid ${COLOR_GRAY}`,
       display: "flex",
       flexDirection: "column",
-      gap: 8,
+      gap: 8
     },
     cardTitle: {
       fontWeight: 800,
       fontSize: "1.18rem",
       color: COLOR_PRIMARY,
       marginBottom: "8px",
-      letterSpacing: "-0.5px",
+      letterSpacing: "-0.5px"
     },
     cardRow: {
       display: "flex",
       alignItems: "center",
       margin: "2px 0",
       fontSize: "1.09rem",
-      fontWeight: 700,
+      fontWeight: 700
     },
     cardLabel: {
       minWidth: 130,
-      color: COLOR_DARK,
+      color: COLOR_DARK
     },
     cardValue: {
       color: COLOR_CORAL,
       fontWeight: 800,
       fontSize: "1.12rem",
-      marginLeft: 8,
+      marginLeft: 8
     },
     statRow: {
       display: "flex",
@@ -305,18 +251,18 @@ export default function StatusPage() {
       alignItems: "center",
       fontSize: "1.08rem",
       marginBottom: 8,
-      fontWeight: 600,
+      fontWeight: 600
     },
     statLabel: {
       color: "#7c7c92",
-      fontWeight: 600,
+      fontWeight: 600
     },
     statValue: {
       color: COLOR_CORAL,
       fontWeight: 900,
       fontSize: "1.12rem",
       minWidth: 40,
-      textAlign: "right",
+      textAlign: "right"
     },
     campaignTimeRow: {
       display: "flex",
@@ -327,7 +273,7 @@ export default function StatusPage() {
       fontSize: "1rem",
       color: "#767676",
       fontWeight: 600,
-      gap: "2.5rem",
+      gap: "2.5rem"
     },
     debugBlock: {
       margin: "12px 0 18px 0",
@@ -340,7 +286,7 @@ export default function StatusPage() {
       maxWidth: 520,
       lineHeight: 1.35,
       whiteSpace: "pre-wrap",
-      fontFamily: "monospace",
+      fontFamily: "monospace"
     },
     progressSection: {
       margin: "40px auto 36px auto",
@@ -349,7 +295,7 @@ export default function StatusPage() {
       padding: "28px 30px",
       borderRadius: "18px",
       border: `1.5px solid ${COLOR_GRAY}`,
-      boxShadow: "0 3px 12px rgba(35,36,58,0.06)",
+      boxShadow: "0 3px 12px rgba(35,36,58,0.06)"
     },
     progLabelRow: {
       display: "flex",
@@ -357,7 +303,7 @@ export default function StatusPage() {
       alignItems: "center",
       fontWeight: 600,
       marginBottom: 4,
-      marginTop: 16,
+      marginTop: 16
     },
     progBar: {
       height: 18,
@@ -365,19 +311,19 @@ export default function StatusPage() {
       background: "#eee",
       overflow: "hidden",
       marginBottom: "8px",
-      marginTop: "2px",
+      marginTop: "2px"
     },
     progInner: (percent, color) => ({
       width: `${percent}%`,
       height: "100%",
       background: color,
-      transition: "width 0.3s",
+      transition: "width 0.3s"
     }),
     controlsRow: {
       display: "flex",
       justifyContent: "center",
       gap: "22px",
-      margin: "34px 0 0 0",
+      margin: "34px 0 0 0"
     },
     controlBtn: {
       padding: "17px 32px",
@@ -392,7 +338,7 @@ export default function StatusPage() {
       transition: "background 0.15s, transform 0.12s",
       textDecoration: "none",
       outline: "none",
-      letterSpacing: "-0.6px",
+      letterSpacing: "-0.6px"
     },
     prevDetails: {
       background: COLOR_WHITE,
@@ -401,7 +347,7 @@ export default function StatusPage() {
       boxShadow: "0 4px 16px rgba(35,36,58,0.07)",
       maxWidth: 650,
       margin: "32px auto 18px auto",
-      border: `1.5px solid ${COLOR_GRAY}`,
+      border: `1.5px solid ${COLOR_GRAY}`
     },
     prevDetailsRow: {
       display: "flex",
@@ -410,22 +356,22 @@ export default function StatusPage() {
       gap: "16px",
       alignItems: "center",
       fontWeight: 600,
-      fontSize: "1.11rem",
+      fontSize: "1.11rem"
     },
     prevDetailsLabel: {
       color: COLOR_DARK,
       minWidth: 130,
-      fontWeight: 700,
+      fontWeight: 700
     },
     prevDetailsValue: {
       color: COLOR_CORAL,
       fontWeight: 800,
-      fontSize: "1.11rem",
+      fontSize: "1.11rem"
     },
     prevStatsTable: {
       width: "100%",
       margin: "22px 0 8px 0",
-      borderCollapse: "collapse",
+      borderCollapse: "collapse"
     },
     prevStatsTh: {
       borderBottom: `1.5px solid ${COLOR_GRAY}`,
@@ -433,7 +379,7 @@ export default function StatusPage() {
       fontWeight: 700,
       color: COLOR_DARK,
       fontSize: "1.03rem",
-      background: "#f9f3f2",
+      background: "#f9f3f2"
     },
     prevStatsTd: {
       padding: "9px 0",
@@ -441,7 +387,7 @@ export default function StatusPage() {
       color: COLOR_CORAL,
       fontWeight: 900,
       fontSize: "1.07rem",
-      borderBottom: `1px solid #f3efef`,
+      borderBottom: `1px solid #f3efef`
     },
     prevStatsTd2: {
       padding: "9px 0",
@@ -449,7 +395,7 @@ export default function StatusPage() {
       color: COLOR_CORAL,
       fontWeight: 900,
       fontSize: "1.12rem",
-      borderBottom: `1px solid #f3efef`,
+      borderBottom: `1px solid #f3efef`
     },
     prevCampaignsListSection: {
       background: COLOR_WHITE,
@@ -458,7 +404,7 @@ export default function StatusPage() {
       margin: "32px auto",
       border: `1.5px solid ${COLOR_GRAY}`,
       boxShadow: "0 2px 12px rgba(35,36,58,0.06)",
-      padding: "0 0 24px 0",
+      padding: "0 0 24px 0"
     },
     prevCampaignsListTitle: {
       fontWeight: 800,
@@ -467,12 +413,12 @@ export default function StatusPage() {
       padding: "18px 0 12px 32px",
       borderBottom: `1.5px solid ${COLOR_GRAY}`,
       background: "#faf8f8",
-      letterSpacing: "-0.5px",
+      letterSpacing: "-0.5px"
     },
     prevListTable: {
       width: "100%",
       borderCollapse: "collapse",
-      marginTop: 0,
+      marginTop: 0
     },
     prevListTh: {
       padding: "12px 0 8px 0",
@@ -482,7 +428,7 @@ export default function StatusPage() {
       background: "#fafbfc",
       fontSize: "1.03rem",
       textAlign: "left",
-      paddingLeft: 32,
+      paddingLeft: 32
     },
     prevListTd: {
       padding: "11px 0",
@@ -491,18 +437,18 @@ export default function StatusPage() {
       color: COLOR_DARK,
       borderBottom: `1px solid #f5efef`,
       textAlign: "left",
-      paddingLeft: 32,
+      paddingLeft: 32
     },
     prevListTdStatus: {
       color: "#4caf50",
       fontWeight: 800,
-      fontSize: "1.08rem",
+      fontSize: "1.08rem"
     },
     prevListTdSelect: {
       textAlign: "center",
       fontSize: "1.4rem",
       color: COLOR_CORAL,
-      cursor: "pointer",
+      cursor: "pointer"
     },
     prevListTdSelectSelected: {
       textAlign: "center",
@@ -512,14 +458,14 @@ export default function StatusPage() {
       fontWeight: 900,
       background: "#fff2f1",
       borderRadius: "50%",
-      padding: "0 8px",
+      padding: "0 8px"
     },
     prevControlsRow: {
       display: "flex",
       justifyContent: "center",
       gap: "22px",
-      margin: "24px 0 0 0",
-    },
+      margin: "24px 0 0 0"
+    }
   };
 
   function getPercent(value, total) {
@@ -589,7 +535,6 @@ export default function StatusPage() {
                     <li key={c.id}>
                       {c.firstName} {c.lastName} ({c.phone || "No phone"}) |{" "}
                       {c.boosterFields.map(f => {
-                        // Show ALL launches, not just one
                         const launches = extractAllCampaignDateTimes(f.value);
                         return launches.map(l => l.date.toLocaleString()).join(", ");
                       }).join(", ")}

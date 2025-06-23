@@ -8,20 +8,23 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Missing API token" });
   }
 
-  // Extract all campaign launches (timestamp) from a booster field string
-  function extractAllCampaignTimestamps(str) {
+  // Extract all campaign launches (timestamp + campaign name) from a booster field string
+  function extractAllCampaignTimestampsAndNames(str) {
     if (!str) return [];
-    const regex = /Date:\s*(\d{1,2}\/\d{1,2}\/\d{4})(?:\s+(\d{2}:\d{2}))?/g;
+    const regex = /Campaign Name:\s*([^;]+);\s*Date:\s*(\d{1,2}\/\d{1,2}\/\d{4})(?:\s+(\d{2}:\d{2}))?/g;
     let launches = [];
     let match;
     while ((match = regex.exec(str)) !== null) {
-      const [_, datePart, timePart] = match;
+      const [_, campaignName, datePart, timePart] = match;
       const [month, day, year] = datePart.split('/');
       let isoString = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
       if (timePart) {
         isoString += 'T' + timePart;
       }
-      launches.push(isoString);
+      launches.push({
+        iso: isoString,
+        campaignName: campaignName.trim()
+      });
     }
     return launches;
   }
@@ -85,8 +88,11 @@ export default async function handler(req, res) {
     const data = await response.json();
     const contacts = data.contacts || [];
 
-    // Extract all campaign timestamps for all contacts
+    // Extract all campaign timestamps & names for all contacts
+    // timestampToContacts: { [iso]: Set(contactId) }
+    // timestampToName: { [iso]: campaignName }
     let timestampToContacts = {};
+    let timestampToName = {};
     const boosterContacts = contacts
       .map((contact) => {
         const boosterFields = (contact.customField || []).filter(
@@ -94,11 +100,12 @@ export default async function handler(req, res) {
         );
         let allTimestamps = [];
         boosterFields.forEach(field => {
-          const launches = extractAllCampaignTimestamps(field.value);
-          launches.forEach(ts => {
-            allTimestamps.push(ts);
-            if (!timestampToContacts[ts]) timestampToContacts[ts] = new Set();
-            timestampToContacts[ts].add(contact.id);
+          const launches = extractAllCampaignTimestampsAndNames(field.value);
+          launches.forEach(({ iso, campaignName }) => {
+            allTimestamps.push(iso);
+            if (!timestampToContacts[iso]) timestampToContacts[iso] = new Set();
+            timestampToContacts[iso].add(contact.id);
+            timestampToName[iso] = campaignName;
           });
         });
         return {
@@ -129,7 +136,8 @@ export default async function handler(req, res) {
       contacts: boosterContacts,
       previous: contactsWithPrevious.length,
       current: contactsWithCurrent.length,
-      currentBoosterCampaignName: null,
+      currentBoosterCampaignName: currentTimestamp ? timestampToName[currentTimestamp] : null,
+      previousBoosterCampaignName: previousTimestamp ? timestampToName[previousTimestamp] : null,
       currentCampaignTimestamp: currentTimestamp ? new Date(currentTimestamp).toISOString() : null,
       previousCampaignTimestamp: previousTimestamp ? new Date(previousTimestamp).toISOString() : null,
       totalCampaigns: allTimestampsSorted.length
