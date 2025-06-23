@@ -41,18 +41,6 @@ const previousCampaigns = [
   },
 ];
 
-const current = {
-  total: 150,
-  firstMsg: 120,
-  remaining: 30,
-  waiting: 45,
-  responded: 35,
-  noResponse: 15,
-  name: "Summer Glow 2025",
-  date: "2025-06-10",
-  time: "15:30",
-};
-
 export default function StatusPage() {
   const [activeTab, setActiveTab] = useState("current"); // "previous" or "current"
   const [selectedPrevIndex, setSelectedPrevIndex] = useState(2); // default to "Spring Glow Campaign"
@@ -62,33 +50,45 @@ export default function StatusPage() {
   const [boosterStats, setBoosterStats] = useState({ previous: 0, current: 0, contacts: [] });
   const [boosterHistoryCount, setBoosterHistoryCount] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  // You might want to use these names for display
-  // For demo, hardcode, otherwise, fetch from backend or let user input
-  const previousBoosterCampaignName = selectedPrev.name; // or fallback to latest known
-  const currentBoosterCampaignName = "Current Booster Campaign"; // You can customize if you have the name
+  const [currentBoosterCampaignName, setCurrentBoosterCampaignName] = useState("Current Booster Campaign");
+  const [previousBoosterCampaignName, setPreviousBoosterCampaignName] = useState(selectedPrev.name);
 
   useEffect(() => {
     async function fetchStats() {
       setLoading(true);
       try {
-        const res = await fetch("/api/get-campaign-status");
-        const data = await res.json();
+        // Get campaign status and current/previous campaign names
+        const [statsRes, customValueRes] = await Promise.all([
+          fetch("/api/get-campaign-status"),
+          fetch("/api/get-custom-value?name=Booster Campaign Name"),
+        ]);
+        const statsData = await statsRes.json();
         setBoosterStats({
-          previous: data.previous,
-          current: data.current,
-          contacts: data.contacts || [],
+          previous: statsData.previous,
+          current: statsData.current,
+          contacts: statsData.contacts || [],
         });
-        if (data.count !== undefined) {
-          setBoosterHistoryCount(data.count);
+        if (statsData.count !== undefined) {
+          setBoosterHistoryCount(statsData.count);
+        }
+        // Use fetched custom value for current campaign name if exists
+        if (customValueRes.ok) {
+          const customValueData = await customValueRes.json();
+          if (customValueData && customValueData.value) {
+            setCurrentBoosterCampaignName(customValueData.value);
+          } else {
+            setCurrentBoosterCampaignName("Current Booster Campaign");
+          }
         }
       } catch (err) {
         setBoosterStats({ previous: 0, current: 0, contacts: [] });
         setBoosterHistoryCount(null);
+        setCurrentBoosterCampaignName("Current Booster Campaign");
       }
       setLoading(false);
     }
     fetchStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Sort contacts by booster field value (date) ascending (earliest first)

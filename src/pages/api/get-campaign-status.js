@@ -140,7 +140,28 @@ export default async function handler(req, res) {
       if (c.isoBoosterDates.includes(maxDateIso)) current++;
     });
 
-    // Return contacts as before, but without the extra fields
+    // ---- NEW: Fetch the current Booster Campaign Name custom value ----
+    let currentBoosterCampaignName = null;
+    try {
+      const customValuesResp = await fetch("https://rest.gohighlevel.com/v1/custom-values", {
+        headers: {
+          Authorization: `Bearer ${API_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+      });
+      if (customValuesResp.ok) {
+        const customValuesData = await customValuesResp.json();
+        const campaignValue = (customValuesData.customValues || []).find(
+          v => v.name && v.name.trim().toLowerCase() === "booster campaign name"
+        );
+        currentBoosterCampaignName = campaignValue?.value || null;
+      }
+    } catch (e) {
+      // fail silently, just don't provide campaign name
+      currentBoosterCampaignName = null;
+    }
+
+    // Return contacts as before, but without the extra fields, and with campaign name
     return res.status(200).json({
       count: boosterContacts.length,
       contacts: boosterContacts.map(
@@ -148,6 +169,7 @@ export default async function handler(req, res) {
       ),
       previous,
       current,
+      currentBoosterCampaignName // <-- added
     });
   } catch (error) {
     return res.status(500).json({ error: error.message || "Internal Server Error" });
