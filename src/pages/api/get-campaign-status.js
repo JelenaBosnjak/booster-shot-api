@@ -146,7 +146,6 @@ export default async function handler(req, res) {
       .map(c => c.boosterCampaignName)
       .filter(Boolean);
     if (currentCampaignNames.length > 0) {
-      // get the most frequent campaign name for current campaign contacts
       const freq = {};
       currentCampaignNames.forEach(n => { freq[n] = (freq[n] || 0) + 1; });
       currentBoosterCampaignName = Object.entries(freq).sort((a, b) => b[1] - a[1])[0][0];

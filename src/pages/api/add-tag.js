@@ -5,7 +5,7 @@ const BATCH_SIZE = 100;
 const BATCH_INTERVAL = 10_000;
 
 const BOOSTER_SHOT_CUSTOM_VALUE_NAME = "Booster shot message";
-const BOOSTER_CAMPAIGN_NAME_FIELD_NAME = "Booster Campaign Name"; // <-- use as custom field name
+const BOOSTER_CAMPAIGN_NAME_FIELD_NAME = "Booster Campaign Name"; // <-- correct spelling
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
