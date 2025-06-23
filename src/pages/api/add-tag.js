@@ -20,52 +20,54 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'API key missing' });
   }
 
-  let results = [];
-  let rateLimitHit = false;
-  let resetTime = null;
-
-  async function tagContact(contactId) {
+  // 1. Set Custom Value for Booster Campaign Name (location-wide), dynamically get the ID
+  let boosterCampaignNameCustomValueResult = null;
+  if (boosterCampaignName && locationId) {
     try {
-      const response = await fetch(`${GHL_API_URL}/${contactId}/tags`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${GHL_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ tags: [tag] })
+      const GHL_CUSTOM_VALUES_URL = "https://rest.gohighlevel.com/v1/custom-values";
+      const customValuesRes = await fetch(GHL_CUSTOM_VALUES_URL, {
+        headers: { 'Authorization': `Bearer ${GHL_API_KEY}` }
       });
+      if (!customValuesRes.ok) {
+        const error = await customValuesRes.text();
+        boosterCampaignNameCustomValueResult = { success: false, error: "Failed to fetch custom values: " + error };
+      } else {
+        const customValuesData = await customValuesRes.json();
+        const customValue = customValuesData.customValues.find(
+          v => v.name && v.name.trim().toLowerCase() === BOOSTER_CAMPAIGN_NAME_CUSTOM_VALUE.toLowerCase()
+        );
+        if (!customValue) {
+          boosterCampaignNameCustomValueResult = {
+            success: false,
+            error: `Custom value "${BOOSTER_CAMPAIGN_NAME_CUSTOM_VALUE}" not found`
+          };
+        } else {
+          const customValueRes = await fetch(`${GHL_CUSTOM_VALUES_URL}/${customValue.id}`, {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${GHL_API_KEY}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              value: boosterCampaignName,
+              locationId
+            })
+          });
 
-      if (response.status === 429) {
-        const retryAfter = parseInt(response.headers.get('ratelimit-reset')) || 10;
-        rateLimitHit = true;
-        resetTime = retryAfter;
-        return { contactId, success: false, error: 'Rate limit hit', resetTime: retryAfter };
+          if (!customValueRes.ok) {
+            const errData = await customValueRes.json().catch(() => ({}));
+            boosterCampaignNameCustomValueResult = { success: false, error: errData.error || customValueRes.statusText };
+          } else {
+            boosterCampaignNameCustomValueResult = { success: true };
+          }
+        }
       }
-
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        return { contactId, success: false, error: errData.error || response.statusText };
-      }
-
-      return { contactId, success: true };
     } catch (err) {
-      return { contactId, success: false, error: err.message || 'Unknown error' };
+      boosterCampaignNameCustomValueResult = { success: false, error: err.message || 'Unknown error' };
     }
   }
 
-  // Tagging contacts in batches
-  for (let i = 0; i < contactIds.length; i += BATCH_SIZE) {
-    const batch = contactIds.slice(i, i + BATCH_SIZE);
-    const batchResults = await Promise.all(batch.map(tagContact));
-    results.push(...batchResults);
-
-    if (rateLimitHit) break;
-    if (i + BATCH_SIZE < contactIds.length) {
-      await new Promise((resolve) => setTimeout(resolve, BATCH_INTERVAL));
-    }
-  }
-
-  // Set Custom Value for Booster Shot Message (location-wide), dynamically get the ID
+  // 2. Set Custom Value for Booster Shot Message (location-wide), dynamically get the ID
   let customValueResult = null;
   if (boosterShotMessage && locationId) {
     try {
@@ -112,50 +114,48 @@ export default async function handler(req, res) {
     }
   }
 
-  // Set Custom Value for Booster Campaign Name (location-wide), dynamically get the ID
-  let boosterCampaignNameCustomValueResult = null;
-  if (boosterCampaignName && locationId) {
-    try {
-      const GHL_CUSTOM_VALUES_URL = "https://rest.gohighlevel.com/v1/custom-values";
-      const customValuesRes = await fetch(GHL_CUSTOM_VALUES_URL, {
-        headers: { 'Authorization': `Bearer ${GHL_API_KEY}` }
-      });
-      if (!customValuesRes.ok) {
-        const error = await customValuesRes.text();
-        boosterCampaignNameCustomValueResult = { success: false, error: "Failed to fetch custom values: " + error };
-      } else {
-        const customValuesData = await customValuesRes.json();
-        const customValue = customValuesData.customValues.find(
-          v => v.name && v.name.trim().toLowerCase() === BOOSTER_CAMPAIGN_NAME_CUSTOM_VALUE.toLowerCase()
-        );
-        if (!customValue) {
-          boosterCampaignNameCustomValueResult = {
-            success: false,
-            error: `Custom value "${BOOSTER_CAMPAIGN_NAME_CUSTOM_VALUE}" not found`
-          };
-        } else {
-          const customValueRes = await fetch(`${GHL_CUSTOM_VALUES_URL}/${customValue.id}`, {
-            method: 'PUT',
-            headers: {
-              'Authorization': `Bearer ${GHL_API_KEY}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              value: boosterCampaignName,
-              locationId
-            })
-          });
+  // 3. Tagging contacts in batches
+  let results = [];
+  let rateLimitHit = false;
+  let resetTime = null;
 
-          if (!customValueRes.ok) {
-            const errData = await customValueRes.json().catch(() => ({}));
-            boosterCampaignNameCustomValueResult = { success: false, error: errData.error || customValueRes.statusText };
-          } else {
-            boosterCampaignNameCustomValueResult = { success: true };
-          }
-        }
+  async function tagContact(contactId) {
+    try {
+      const response = await fetch(`${GHL_API_URL}/${contactId}/tags`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${GHL_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ tags: [tag] })
+      });
+
+      if (response.status === 429) {
+        const retryAfter = parseInt(response.headers.get('ratelimit-reset')) || 10;
+        rateLimitHit = true;
+        resetTime = retryAfter;
+        return { contactId, success: false, error: 'Rate limit hit', resetTime: retryAfter };
       }
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        return { contactId, success: false, error: errData.error || response.statusText };
+      }
+
+      return { contactId, success: true };
     } catch (err) {
-      boosterCampaignNameCustomValueResult = { success: false, error: err.message || 'Unknown error' };
+      return { contactId, success: false, error: err.message || 'Unknown error' };
+    }
+  }
+
+  for (let i = 0; i < contactIds.length; i += BATCH_SIZE) {
+    const batch = contactIds.slice(i, i + BATCH_SIZE);
+    const batchResults = await Promise.all(batch.map(tagContact));
+    results.push(...batchResults);
+
+    if (rateLimitHit) break;
+    if (i + BATCH_SIZE < contactIds.length) {
+      await new Promise((resolve) => setTimeout(resolve, BATCH_INTERVAL));
     }
   }
 
