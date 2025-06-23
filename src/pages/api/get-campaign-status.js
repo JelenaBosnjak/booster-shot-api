@@ -11,7 +11,6 @@ export default async function handler(req, res) {
   // Extract all campaign launches (name + datetime) from a booster field string
   function extractAllCampaignLaunches(str) {
     if (!str) return [];
-    // Match all: Campaign Name: ...; Date: MM/DD/YYYY [HH:MM]
     const regex = /Campaign Name:\s*([^;]+);\s*Date:\s*(\d{1,2}\/\d{1,2}\/\d{4})(?:\s+(\d{2}:\d{2}))?/g;
     let launches = [];
     let match;
@@ -133,6 +132,7 @@ export default async function handler(req, res) {
       })
       .filter(c => c.launches.length > 0);
 
+    // Flatten all launches for all contacts
     boosterContacts.forEach(c => {
       c.launches.forEach(l => {
         allLaunches.push({
@@ -142,40 +142,36 @@ export default async function handler(req, res) {
       });
     });
 
-    // Filter only launches for the current campaign name
-    allLaunches = allLaunches.filter(l => l.campaignName === boosterCampaignName);
+    // Only consider launches for the current campaign name
+    const currentCampaignName = boosterCampaignName;
+    const currentNameLaunches = allLaunches.filter(l => l.campaignName === currentCampaignName);
 
-    // Find unique launch datetimes (as ISO string) and sort descending
-    const uniqueLaunches = Array.from(
-      new Set(allLaunches.map(l => l.iso))
-    )
-      .map(iso => allLaunches.find(l => l.iso === iso))
-      .sort((a, b) => b.campaignDate - a.campaignDate);
+    // Find all unique ISO datetime launches (campaign runs) for this name
+    const uniqueIsoLaunches = Array.from(new Set(currentNameLaunches.map(l => l.iso)));
+    // Sort descending (latest first)
+    uniqueIsoLaunches.sort((a, b) => new Date(b) - new Date(a));
 
-    // The most recent is "current", the second-most is "previous"
-    const currentIso = uniqueLaunches[0]?.campaignDate.toISOString();
-    const previousIso = uniqueLaunches[1]?.campaignDate.toISOString();
+    // Determine current and previous campaign timestamps
+    const currentIso = uniqueIsoLaunches[0] || null;
+    const previousIso = uniqueIsoLaunches[1] || null;
 
-    // Count contacts for current and previous
+    // Count contacts with the latest and previous timestamp
     const contactsWithCurrent = new Set(
-      allLaunches.filter(l => l.campaignDate.toISOString() === currentIso).map(l => l.contactId)
+      currentNameLaunches.filter(l => l.iso === currentIso).map(l => l.contactId)
     );
     const contactsWithPrevious = new Set(
-      allLaunches.filter(l => l.campaignDate.toISOString() === previousIso).map(l => l.contactId)
+      currentNameLaunches.filter(l => l.iso === previousIso).map(l => l.contactId)
     );
-
-    // Unique campaign launches total for the current campaign name
-    const totalCampaigns = uniqueLaunches.length;
 
     return res.status(200).json({
       count: boosterContacts.length,
       contacts: boosterContacts.map(({ launches, ...rest }) => rest),
       previous: contactsWithPrevious.size,
       current: contactsWithCurrent.size,
-      currentBoosterCampaignName: boosterCampaignName,
-      currentCampaignTimestamp: currentIso ?? null,
-      previousCampaignTimestamp: previousIso ?? null,
-      totalCampaigns
+      currentBoosterCampaignName: currentCampaignName,
+      currentCampaignTimestamp: currentIso ? new Date(currentIso).toISOString() : null,
+      previousCampaignTimestamp: previousIso ? new Date(previousIso).toISOString() : null,
+      totalCampaigns: uniqueIsoLaunches.length
     });
   } catch (error) {
     return res.status(500).json({ error: error.message || "Internal Server Error" });
