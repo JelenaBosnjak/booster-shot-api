@@ -5,7 +5,7 @@ const BATCH_SIZE = 100;
 const BATCH_INTERVAL = 10_000;
 
 const BOOSTER_SHOT_CUSTOM_VALUE_NAME = "Booster shot message";
-const BOOSTER_CAMPAIGN_NAME_FIELD = "Booster Campaign Name"; // <-- custom value name
+const BOOSTER_CAMPAIGN_NAME_CUSTOM_VALUE_NAME = "Booster Campaign Name"; // <-- use as custom value name
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -113,52 +113,49 @@ export default async function handler(req, res) {
     }
   }
 
-  // Set Booster Campaign Name for each contact
-  let campaignNameResults = [];
-  if (boosterCampaignName && contactIds.length > 0) {
-    // fetch custom fields for the location to find the field ID
-    let fieldId = null;
+  // Set Custom Value for Booster Campaign Name (location-wide), dynamically get the ID
+  let boosterCampaignNameResult = null;
+  if (boosterCampaignName && locationId) {
     try {
-      const fieldsRes = await fetch(`${GHL_API_URL}/customFields?locationId=${locationId}`, {
+      const customValuesRes = await fetch(GHL_CUSTOM_VALUES_URL, {
         headers: { 'Authorization': `Bearer ${GHL_API_KEY}` }
       });
-      if (fieldsRes.ok) {
-        const fieldsData = await fieldsRes.json();
-        const found = fieldsData.customFields.find(f =>
-          f.name && f.name.trim().toLowerCase() === BOOSTER_CAMPAIGN_NAME_FIELD.toLowerCase()
+      if (!customValuesRes.ok) {
+        const error = await customValuesRes.text();
+        boosterCampaignNameResult = { success: false, error: "Failed to fetch custom values: " + error };
+      } else {
+        const customValuesData = await customValuesRes.json();
+        const customValue = customValuesData.customValues.find(
+          v => v.name.trim().toLowerCase() === BOOSTER_CAMPAIGN_NAME_CUSTOM_VALUE_NAME.toLowerCase()
         );
-        if (found) fieldId = found.id;
-      }
-    } catch (e) {}
-    if (fieldId) {
-      // update the custom field for each contact
-      for (const contactId of contactIds) {
-        try {
-          const updateRes = await fetch(`${GHL_API_URL}/${contactId}/customFields`, {
-            method: "POST",
+        if (!customValue) {
+          boosterCampaignNameResult = {
+            success: false,
+            error: `Custom value "${BOOSTER_CAMPAIGN_NAME_CUSTOM_VALUE_NAME}" not found`
+          };
+        } else {
+          const customValueRes = await fetch(`${GHL_CUSTOM_VALUES_URL}/${customValue.id}`, {
+            method: 'PUT',
             headers: {
               'Authorization': `Bearer ${GHL_API_KEY}`,
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify([
-              { field: fieldId, value: boosterCampaignName }
-            ])
+            body: JSON.stringify({
+              value: boosterCampaignName,
+              locationId
+            })
           });
-          if (!updateRes.ok) {
-            const errData = await updateRes.json().catch(() => ({}));
-            campaignNameResults.push({ contactId, success: false, error: errData.error || updateRes.statusText });
+
+          if (!customValueRes.ok) {
+            const errData = await customValueRes.json().catch(() => ({}));
+            boosterCampaignNameResult = { success: false, error: errData.error || customValueRes.statusText };
           } else {
-            campaignNameResults.push({ contactId, success: true });
+            boosterCampaignNameResult = { success: true };
           }
-        } catch (err) {
-          campaignNameResults.push({ contactId, success: false, error: err.message || 'Unknown error' });
         }
       }
-    } else {
-      campaignNameResults = contactIds.map(contactId => ({
-        contactId, success: false,
-        error: `Custom field "${BOOSTER_CAMPAIGN_NAME_FIELD}" not found`
-      }));
+    } catch (err) {
+      boosterCampaignNameResult = { success: false, error: err.message || 'Unknown error' };
     }
   }
 
@@ -168,10 +165,10 @@ export default async function handler(req, res) {
       results,
       resetTime,
       customValueResult,
-      campaignNameResults
+      boosterCampaignNameResult
     });
   }
 
   // Success
-  return res.status(200).json({ results, customValueResult, campaignNameResults });
+  return res.status(200).json({ results, customValueResult, boosterCampaignNameResult });
 }
