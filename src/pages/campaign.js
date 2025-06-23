@@ -262,7 +262,7 @@ export default function ContactList() {
           contactIds: Array.from(selectedContacts),
           tag: 'booster shot',
           boosterShotMessage: smsMessage,
-          boosterCampaignName: campaign, // <-- send campaign selection!
+          boosterCampaignName: campaign, // <-- this is the dropdown value, to backend
           locationId
         })
       });
@@ -292,8 +292,9 @@ export default function ContactList() {
       if (result.customValueResult && !result.customValueResult.success) {
         alert(`Warning: Custom Value update failed: ${result.customValueResult.error}`);
       }
-      if (result.campaignNameResults && result.campaignNameResults.some(r => !r.success)) {
-        alert(`Warning: Some contacts' Booster Campaign Name update failed.`);
+      // Updated: check for boosterSmsNameResults instead of campaignNameResults
+      if (result.boosterSmsNameResults && result.boosterSmsNameResults.some(r => !r.success)) {
+        alert(`Warning: Some contacts' Booster Sms Name update failed.`);
       }
 
       if (locationId) {
@@ -712,7 +713,7 @@ export default function ContactList() {
                         Booster Campaign: {
                           Array.isArray(contact.customField)
                             ? (contact.customField.find(f =>
-                                f.name && f.name.toLowerCase() === "booster campaign name"
+                                f.name && f.name.toLowerCase() === "booster sms name"
                               )?.value || "—")
                             : "—"
                         }
