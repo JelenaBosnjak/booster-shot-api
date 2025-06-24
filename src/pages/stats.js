@@ -567,6 +567,10 @@ export default function StatusPage() {
                   {loading ? "Loading..." : boosterStats.previous}
                 </span>
               </div>
+              <div style={styles.cardRow}>
+                <span style={styles.cardLabel}>1st Message Sent:</span>
+                <span style={styles.cardValue}>Coming soon</span>
+              </div>
             </div>
             {/* Current Booster Campaign Card */}
             <div style={styles.card}>
@@ -588,6 +592,10 @@ export default function StatusPage() {
                 <span style={styles.cardValue}>
                   {loading ? "Loading..." : boosterStats.current}
                 </span>
+              </div>
+              <div style={styles.cardRow}>
+                <span style={styles.cardLabel}>1st Message Sent:</span>
+                <span style={styles.cardValue}>Coming soon</span>
               </div>
             </div>
           </div>
