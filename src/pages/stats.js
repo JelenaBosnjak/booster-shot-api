@@ -8,39 +8,6 @@ const COLOR_LIGHT_BG = "#fafbfc";
 const COLOR_GRAY = "#e5e7eb";
 const COLOR_PRIMARY = COLOR_DARK;
 
-const previousCampaigns = [
-  {
-    name: "Mother's Day Promo",
-    date: "2025-05-01",
-    status: "Done",
-    stats: { total: 140, firstMsg: 110, remaining: 20, waiting: 30, responded: 28, noResponse: 10 },
-  },
-  {
-    name: "Botox Launch Special",
-    date: "2025-04-10",
-    status: "Done",
-    stats: { total: 145, firstMsg: 115, remaining: 25, waiting: 20, responded: 32, noResponse: 8 },
-  },
-  {
-    name: "Spring Glow Campaign",
-    date: "2025-03-20",
-    status: "Done",
-    stats: { total: 150, firstMsg: 120, remaining: 30, waiting: 45, responded: 35, noResponse: 15 },
-  },
-  {
-    name: "Flawless Forehead",
-    date: "2025-02-14",
-    status: "Done",
-    stats: { total: 110, firstMsg: 80, remaining: 18, waiting: 10, responded: 22, noResponse: 5 },
-  },
-  {
-    name: "New Year Kickoff",
-    date: "2025-01-05",
-    status: "Done",
-    stats: { total: 125, firstMsg: 92, remaining: 24, waiting: 12, responded: 30, noResponse: 7 },
-  },
-];
-
 // Utility: Extract all campaign launches (as ISO string) from a string like "...; Date: 06/23/2025 17:13 ..."
 function extractAllCampaignDateTimes(str) {
   if (!str) return [];
@@ -65,8 +32,7 @@ function extractAllCampaignDateTimes(str) {
 
 export default function StatusPage() {
   const [activeTab, setActiveTab] = useState("current");
-  const [selectedPrevIndex, setSelectedPrevIndex] = useState(2); // default to "Spring Glow Campaign"
-  const selectedPrev = previousCampaigns[selectedPrevIndex] || previousCampaigns[0];
+  const [selectedPrevIndex, setSelectedPrevIndex] = useState(0);
 
   const [boosterStats, setBoosterStats] = useState({ previous: 0, current: 0, contacts: [] });
   const [boosterHistoryCount, setBoosterHistoryCount] = useState(null);
@@ -77,6 +43,7 @@ export default function StatusPage() {
   const [currentCampaignTimestamp, setCurrentCampaignTimestamp] = useState("");
   const [previousCampaignTimestamp, setPreviousCampaignTimestamp] = useState("");
   const [totalCampaignLaunches, setTotalCampaignLaunches] = useState(0);
+  const [previousCampaigns, setPreviousCampaigns] = useState([]);
 
   useEffect(() => {
     async function fetchStats() {
@@ -89,17 +56,13 @@ export default function StatusPage() {
           current: statsData.current,
           contacts: statsData.contacts || [],
         });
-        if (statsData.count !== undefined) {
-          setBoosterHistoryCount(statsData.count);
-        }
-        if (typeof statsData.totalCampaigns === "number") {
-          setTotalCampaignLaunches(statsData.totalCampaigns);
-        }
-        // Use the backend provided campaign names and timestamps
+        setBoosterHistoryCount(statsData.count ?? null);
+        setTotalCampaignLaunches(statsData.totalCampaigns ?? 0);
         setCurrentBoosterCampaignName(statsData.currentBoosterCampaignName || "Current Booster Campaign");
         setPreviousBoosterCampaignName(statsData.previousBoosterCampaignName || "Previous Booster Campaign");
         setCurrentCampaignTimestamp(statsData.currentCampaignTimestamp ? new Date(statsData.currentCampaignTimestamp).toLocaleString() : "");
         setPreviousCampaignTimestamp(statsData.previousCampaignTimestamp ? new Date(statsData.previousCampaignTimestamp).toLocaleString() : "");
+        setPreviousCampaigns(statsData.previousCampaigns || []);
       } catch (err) {
         setBoosterStats({ previous: 0, current: 0, contacts: [] });
         setBoosterHistoryCount(null);
@@ -108,6 +71,7 @@ export default function StatusPage() {
         setCurrentCampaignTimestamp("");
         setPreviousCampaignTimestamp("");
         setTotalCampaignLaunches(0);
+        setPreviousCampaigns([]);
       }
       setLoading(false);
     }
@@ -126,6 +90,8 @@ export default function StatusPage() {
     if (!bDate) return -1;
     return aDate - bDate;
   });
+
+  const selectedPrev = previousCampaigns[selectedPrevIndex] || previousCampaigns[0] || {};
 
   const styles = {
     page: {
@@ -606,11 +572,11 @@ export default function StatusPage() {
           <div style={styles.prevDetails}>
             <div style={styles.prevDetailsRow}>
               <span style={styles.prevDetailsLabel}>Campaign Name:</span>
-              <span style={styles.prevDetailsValue}>{selectedPrev.name}</span>
+              <span style={styles.prevDetailsValue}>{selectedPrev?.name || "N/A"}</span>
             </div>
             <div style={styles.prevDetailsRow}>
               <span style={styles.prevDetailsLabel}>Date:</span>
-              <span style={styles.prevDetailsValue}>{selectedPrev.date}</span>
+              <span style={styles.prevDetailsValue}>{selectedPrev?.date || "N/A"}</span>
             </div>
             <table style={styles.prevStatsTable}>
               <thead>

@@ -8,8 +8,8 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Missing API token" });
   }
 
-  // Extract all campaign launches (timestamp + campaign name) from a booster field string
-  function extractAllCampaignTimestampsAndNames(str) {
+  // Utility to extract campaign launches (name, date, time) from the custom field string
+  function extractAllCampaignLaunches(str) {
     if (!str) return [];
     const regex = /Campaign Name:\s*([^;]+);\s*Date:\s*(\d{1,2}\/\d{1,2}\/\d{4})(?:\s+(\d{2}:\d{2}))?/g;
     let launches = [];
@@ -18,12 +18,11 @@ export default async function handler(req, res) {
       const [_, campaignName, datePart, timePart] = match;
       const [month, day, year] = datePart.split('/');
       let isoString = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-      if (timePart) {
-        isoString += 'T' + timePart;
-      }
+      if (timePart) isoString += 'T' + timePart;
       launches.push({
+        campaignName: campaignName.trim(),
         iso: isoString,
-        campaignName: campaignName.trim()
+        date: new Date(isoString),
       });
     }
     return launches;
@@ -46,9 +45,7 @@ export default async function handler(req, res) {
       } catch {
         error = { message: "Unknown API error" };
       }
-      return res
-        .status(fieldsResponse.status)
-        .json({ error: error.message || "API Error" });
+      return res.status(fieldsResponse.status).json({ error: error.message || "API Error" });
     }
 
     const fieldsData = await fieldsResponse.json();
@@ -57,98 +54,106 @@ export default async function handler(req, res) {
     );
 
     if (!boosterFieldObj) {
-      return res
-        .status(200)
-        .json({ error: 'Custom field "Booster History Data" not found.', count: 0, contacts: [] });
+      return res.status(200).json({ error: 'Custom field "Booster History Data" not found.', count: 0, contacts: [], previousCampaigns: [] });
     }
 
     const boosterFieldId = boosterFieldObj.id;
 
     // 2. Fetch contacts
-    const ghlUrl = `https://rest.gohighlevel.com/v1/contacts?limit=100`;
-    const response = await fetch(ghlUrl, {
-      headers: {
-        Authorization: `Bearer ${API_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-    });
+    let allContacts = [];
+    let nextPageUrl = `https://rest.gohighlevel.com/v1/contacts?limit=100`;
+    while (nextPageUrl) {
+      const response = await fetch(nextPageUrl, {
+        headers: {
+          Authorization: `Bearer ${API_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+      });
 
-    if (!response.ok) {
-      let error;
-      try {
-        error = await response.json();
-      } catch {
-        error = { message: "Unknown API error" };
+      if (!response.ok) {
+        let error;
+        try {
+          error = await response.json();
+        } catch {
+          error = { message: "Unknown API error" };
+        }
+        return res.status(response.status).json({ error: error.message || "API Error" });
       }
-      return res
-        .status(response.status)
-        .json({ error: error.message || "API Error" });
+
+      const data = await response.json();
+      allContacts = allContacts.concat(data.contacts || []);
+      nextPageUrl = data.meta && data.meta.nextPageUrl ? data.meta.nextPageUrl : null;
     }
 
-    const data = await response.json();
-    const contacts = data.contacts || [];
+    // 3. Build campaign instances: { [campaignKey]: { name, date, stats: { total, ... } } }
+    // We'll use campaignKey as `${campaignName}::${iso}` for uniqueness.
+    const campaignMap = {};
+    const campaignOrder = []; // To preserve order for display
+    const contactsByCampaign = {};
 
-    // Extract all campaign timestamps & names for all contacts
-    // timestampToContacts: { [iso]: Set(contactId) }
-    // timestampToNames: { [iso]: Set(campaignName) }
-    let timestampToContacts = {};
-    let timestampToNames = {};
-    const boosterContacts = contacts
-      .map((contact) => {
-        const boosterFields = (contact.customField || []).filter(
-          (field) => field.id === boosterFieldId && !!field.value
-        );
-        let allTimestamps = [];
-        boosterFields.forEach(field => {
-          const launches = extractAllCampaignTimestampsAndNames(field.value);
-          launches.forEach(({ iso, campaignName }) => {
-            allTimestamps.push(iso);
-            if (!timestampToContacts[iso]) timestampToContacts[iso] = new Set();
-            timestampToContacts[iso].add(contact.id);
-            if (!timestampToNames[iso]) timestampToNames[iso] = new Set();
-            timestampToNames[iso].add(campaignName);
-          });
+    allContacts.forEach((contact) => {
+      const boosterFields = (contact.customField || []).filter(
+        (field) => field.id === boosterFieldId && !!field.value
+      );
+      boosterFields.forEach(field => {
+        const launches = extractAllCampaignLaunches(field.value);
+        launches.forEach(({ campaignName, iso, date }) => {
+          const campaignKey = `${campaignName}::${iso}`;
+          // Init if not present
+          if (!campaignMap[campaignKey]) {
+            campaignMap[campaignKey] = {
+              name: campaignName,
+              date: iso,
+              status: "Done", // You can adjust if you have real status
+              stats: {
+                total: 0,
+                firstMsg: 0, // If you track this elsewhere
+                remaining: 0, // If you track this elsewhere
+                waiting: 0,   // If you track this elsewhere
+                responded: 0, // If you track this elsewhere
+                noResponse: 0 // If you track this elsewhere
+              }
+            };
+            campaignOrder.push({ campaignKey, date: new Date(iso) });
+            contactsByCampaign[campaignKey] = [];
+          }
+          campaignMap[campaignKey].stats.total += 1; // Just count appearances in contacts
+          contactsByCampaign[campaignKey].push(contact.id);
         });
-        return {
-          id: contact.id,
-          firstName: contact.firstName,
-          lastName: contact.lastName,
-          phone: contact.phone,
-          boosterFields: boosterFields.map((field) => ({
-            id: field.id,
-            value: field.value,
-          })),
-          campaignTimestamps: allTimestamps
-        };
-      })
-      .filter(c => c.campaignTimestamps.length > 0);
+      });
+    });
 
-    // All unique campaign timestamps, sorted descending (latest first)
-    const allTimestampsSorted = Object.keys(timestampToContacts).sort((a, b) => new Date(b) - new Date(a));
+    // Sort campaigns by date, latest first
+    campaignOrder.sort((a, b) => b.date - a.date);
 
+    // Build the previousCampaigns array for the frontend
+    const previousCampaigns = campaignOrder.map(({ campaignKey }) => campaignMap[campaignKey]);
+
+    // If you have logic to fill in real stats (firstMsg, responded, etc.), do it here.
+    // Otherwise, they will be 0 for now.
+
+    // The rest of the data for the current/previous campaign cards
+    const allTimestampsSorted = campaignOrder.map((c) => c.date.toISOString());
     const currentTimestamp = allTimestampsSorted[0] || null;
     const previousTimestamp = allTimestampsSorted[1] || null;
-
-    const contactsWithCurrent = currentTimestamp ? Array.from(timestampToContacts[currentTimestamp]) : [];
-    const contactsWithPrevious = previousTimestamp ? Array.from(timestampToContacts[previousTimestamp]) : [];
-
-    // Get the campaign names for each timestamp (join if multiple names)
     const getNamesForTimestamp = (ts) => {
-      if (!ts || !timestampToNames[ts]) return null;
-      const arr = Array.from(timestampToNames[ts]);
-      return arr.length === 1 ? arr[0] : arr.join(", ");
+      const found = campaignOrder.find((c) => c.date.toISOString() === ts);
+      return found
+        ? campaignMap[found.campaignKey].name
+        : null;
     };
 
     return res.status(200).json({
-      count: boosterContacts.length,
-      contacts: boosterContacts,
-      previous: contactsWithPrevious.length,
-      current: contactsWithCurrent.length,
+      count: previousCampaigns.reduce((acc, c) => acc + c.stats.total, 0),
+      contacts: allContacts,
+      previousCampaigns,
+      previous: previousTimestamp ? contactsByCampaign[Object.keys(campaignMap).find(key => campaignMap[key].date === previousTimestamp)].length : 0,
+      current: currentTimestamp ? contactsByCampaign[Object.keys(campaignMap).find(key => campaignMap[key].date === currentTimestamp)].length : 0,
       currentBoosterCampaignName: getNamesForTimestamp(currentTimestamp),
       previousBoosterCampaignName: getNamesForTimestamp(previousTimestamp),
-      currentCampaignTimestamp: currentTimestamp ? new Date(currentTimestamp).toISOString() : null,
-      previousCampaignTimestamp: previousTimestamp ? new Date(previousTimestamp).toISOString() : null,
-      totalCampaigns: allTimestampsSorted.length
+      currentCampaignTimestamp: currentTimestamp,
+      previousCampaignTimestamp: previousTimestamp,
+      totalCampaigns: previousCampaigns.length
     });
   } catch (error) {
     return res.status(500).json({ error: error.message || "Internal Server Error" });
