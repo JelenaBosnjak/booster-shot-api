@@ -36,6 +36,7 @@ export default function StatusPage() {
   // Dynamically loaded previous campaigns
   const [previousCampaigns, setPreviousCampaigns] = useState([]);
   const [selectedPrevIndex, setSelectedPrevIndex] = useState(0);
+  const [showContacts, setShowContacts] = useState(false);
 
   const [boosterStats, setBoosterStats] = useState({ previous: 0, current: 0, contacts: [] });
   const [boosterHistoryCount, setBoosterHistoryCount] = useState(null);
@@ -54,7 +55,6 @@ export default function StatusPage() {
         const statsRes = await fetch("/api/get-campaign-status");
         const statsData = await statsRes.json();
 
-        // For current/previous stats, etc.
         setBoosterStats({
           previous: statsData.previous,
           current: statsData.current,
@@ -70,7 +70,6 @@ export default function StatusPage() {
         setPreviousBoosterCampaignName(statsData.previousBoosterCampaignName || "Previous Booster Campaign");
         setCurrentCampaignTimestamp(statsData.currentCampaignTimestamp ? new Date(statsData.currentCampaignTimestamp).toLocaleString() : "");
         setPreviousCampaignTimestamp(statsData.previousCampaignTimestamp ? new Date(statsData.previousCampaignTimestamp).toLocaleString() : "");
-        // Dynamically loaded previous campaigns for the table
         setPreviousCampaigns(statsData.previousCampaigns || []);
       } catch (err) {
         setBoosterStats({ previous: 0, current: 0, contacts: [] });
@@ -103,6 +102,7 @@ export default function StatusPage() {
   const selectedPrev = previousCampaigns[selectedPrevIndex] || previousCampaigns[0] || {};
 
   const styles = {
+    // ... (same as your latest code for styles)
     page: {
       minHeight: "100vh",
       background: COLOR_LIGHT_BG,
@@ -343,6 +343,31 @@ export default function StatusPage() {
       fontWeight: 800,
       fontSize: "1.11rem"
     },
+    contactsList: {
+      background: "#fff7f5",
+      border: `1px solid ${COLOR_CORAL}`,
+      borderRadius: "9px",
+      marginTop: 10,
+      padding: "12px 18px",
+      fontSize: "1.09rem",
+      maxHeight: 320,
+      overflowY: "auto"
+    },
+    contactsListTitle: {
+      color: COLOR_CORAL,
+      fontWeight: 800,
+      marginBottom: 8,
+      fontSize: "1.09rem"
+    },
+    showContactsBtn: {
+      color: COLOR_CORAL,
+      fontWeight: 700,
+      fontSize: "1.04rem",
+      background: "none",
+      border: "none",
+      cursor: "pointer",
+      marginLeft: 8
+    },
     prevStatsTable: {
       width: "100%",
       margin: "22px 0 8px 0",
@@ -443,9 +468,8 @@ export default function StatusPage() {
     }
   };
 
-  function getPercent(value, total) {
-    if (!total) return 0;
-    return Math.round((value / total) * 100);
+  function handleShowContacts() {
+    setShowContacts((prev) => !prev);
   }
 
   return (
@@ -587,6 +611,27 @@ export default function StatusPage() {
               <span style={styles.prevDetailsLabel}>Date:</span>
               <span style={styles.prevDetailsValue}>{selectedPrev?.date || "N/A"}</span>
             </div>
+            <div style={styles.prevDetailsRow}>
+              <span style={styles.prevDetailsLabel}>Total Added:</span>
+              <span style={styles.prevDetailsValue}>
+                {(selectedPrev.contacts && selectedPrev.contacts.length) || 0}
+                <button style={styles.showContactsBtn} onClick={handleShowContacts}>
+                  {showContacts ? "Hide" : "Show"}
+                </button>
+              </span>
+            </div>
+            {showContacts && selectedPrev.contacts && (
+              <div style={styles.contactsList}>
+                <div style={styles.contactsListTitle}>Contacts for this campaign:</div>
+                <ul style={{ margin: 0, paddingLeft: 18 }}>
+                  {selectedPrev.contacts.map((c) =>
+                    <li key={c.id}>
+                      {c.firstName} {c.lastName} ({c.phone || "No phone"})
+                    </li>
+                  )}
+                </ul>
+              </div>
+            )}
           </div>
           {/* Previous Campaigns List */}
           <div style={styles.prevCampaignsListSection}>
@@ -608,7 +653,7 @@ export default function StatusPage() {
                     <td style={{ ...styles.prevListTd, ...styles.prevListTdStatus }}>{row.status}</td>
                     <td
                       style={idx === selectedPrevIndex ? styles.prevListTdSelectSelected : styles.prevListTdSelect}
-                      onClick={() => setSelectedPrevIndex(idx)}
+                      onClick={() => { setSelectedPrevIndex(idx); setShowContacts(false); }}
                     >
                       {idx === selectedPrevIndex ? "●" : "○"}
                     </td>

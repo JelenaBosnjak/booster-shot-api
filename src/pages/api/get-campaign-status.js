@@ -88,9 +88,10 @@ export default async function handler(req, res) {
     const data = await response.json();
     const contacts = data.contacts || [];
 
-    // Extract all unique campaign launches from contacts
     // campaignKey = `${campaignName}::${isoString}`
     const campaignMap = {};
+    // To collect contacts for each campaign
+    const campaignContacts = {};
 
     contacts.forEach((contact) => {
       const boosterFields = (contact.customField || []).filter(
@@ -104,18 +105,29 @@ export default async function handler(req, res) {
             campaignMap[campaignKey] = {
               name: campaignName,
               date: iso,
-              status: "Done" // Placeholder for previous campaigns
+              status: "Done"
             };
+            campaignContacts[campaignKey] = [];
           }
+          campaignContacts[campaignKey].push({
+            id: contact.id,
+            firstName: contact.firstName,
+            lastName: contact.lastName,
+            phone: contact.phone
+          });
         });
       });
     });
 
     // Convert to array and sort by date descending
-    const previousCampaigns = Object.values(campaignMap).sort((a, b) => new Date(b.date) - new Date(a.date));
+    const previousCampaigns = Object.values(campaignMap)
+      .map(campaign => ({
+        ...campaign,
+        contacts: campaignContacts[`${campaign.name}::${campaign.date}`] || []
+      }))
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
 
-    // --- Keep all previous logic untouched for other fields ---
-    // Extract all campaign timestamps & names for all contacts
+    // Usual stats for rest of the page
     let timestampToContacts = {};
     let timestampToNames = {};
     const boosterContacts = contacts
@@ -148,7 +160,6 @@ export default async function handler(req, res) {
       })
       .filter(c => c.campaignTimestamps.length > 0);
 
-    // All unique campaign timestamps, sorted descending (latest first)
     const allTimestampsSorted = Object.keys(timestampToContacts).sort((a, b) => new Date(b) - new Date(a));
 
     const currentTimestamp = allTimestampsSorted[0] || null;
@@ -157,7 +168,6 @@ export default async function handler(req, res) {
     const contactsWithCurrent = currentTimestamp ? Array.from(timestampToContacts[currentTimestamp]) : [];
     const contactsWithPrevious = previousTimestamp ? Array.from(timestampToContacts[previousTimestamp]) : [];
 
-    // Get the campaign names for each timestamp (join if multiple names)
     const getNamesForTimestamp = (ts) => {
       if (!ts || !timestampToNames[ts]) return null;
       const arr = Array.from(timestampToNames[ts]);
