@@ -101,8 +101,23 @@ export default function StatusPage() {
 
   const selectedPrev = previousCampaigns[selectedPrevIndex] || previousCampaigns[0] || {};
 
+  // For demonstration, using dummy values for stats.
+  // Replace these with real data from your backend if available.
+  function getStatsFor(type) {
+    // You should adapt this to get stats from your backend if you add them
+    return {
+      total: (type === "previous"
+        ? (selectedPrev.contacts ? selectedPrev.contacts.length : 0)
+        : (type === "current" ? boosterStats.current : boosterStats.previous)),
+      firstMsg: "Coming soon",
+      remaining: "Coming soon",
+      responded: "Coming soon",
+      noResponse: "Coming soon"
+    };
+  }
+
   const styles = {
-    // ... (same as your latest code for styles)
+    // ...styles unchanged (same as your code)...
     page: {
       minHeight: "100vh",
       background: COLOR_LIGHT_BG,
@@ -220,25 +235,6 @@ export default function StatusPage() {
       fontSize: "1.12rem",
       marginLeft: 8
     },
-    statRow: {
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      fontSize: "1.08rem",
-      marginBottom: 8,
-      fontWeight: 600
-    },
-    statLabel: {
-      color: "#7c7c92",
-      fontWeight: 600
-    },
-    statValue: {
-      color: COLOR_CORAL,
-      fontWeight: 900,
-      fontSize: "1.12rem",
-      minWidth: 40,
-      textAlign: "right"
-    },
     campaignTimeRow: {
       display: "flex",
       justifyContent: "flex-end",
@@ -263,37 +259,6 @@ export default function StatusPage() {
       whiteSpace: "pre-wrap",
       fontFamily: "monospace"
     },
-    progressSection: {
-      margin: "40px auto 36px auto",
-      maxWidth: 650,
-      background: COLOR_WHITE,
-      padding: "28px 30px",
-      borderRadius: "18px",
-      border: `1.5px solid ${COLOR_GRAY}`,
-      boxShadow: "0 3px 12px rgba(35,36,58,0.06)"
-    },
-    progLabelRow: {
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      fontWeight: 600,
-      marginBottom: 4,
-      marginTop: 16
-    },
-    progBar: {
-      height: 18,
-      borderRadius: "8px",
-      background: "#eee",
-      overflow: "hidden",
-      marginBottom: "8px",
-      marginTop: "2px"
-    },
-    progInner: (percent, color) => ({
-      width: `${percent}%`,
-      height: "100%",
-      background: color,
-      transition: "width 0.3s"
-    }),
     controlsRow: {
       display: "flex",
       justifyContent: "center",
@@ -368,35 +333,6 @@ export default function StatusPage() {
       cursor: "pointer",
       marginLeft: 8
     },
-    prevStatsTable: {
-      width: "100%",
-      margin: "22px 0 8px 0",
-      borderCollapse: "collapse"
-    },
-    prevStatsTh: {
-      borderBottom: `1.5px solid ${COLOR_GRAY}`,
-      padding: "10px 0 6px 0",
-      fontWeight: 700,
-      color: COLOR_DARK,
-      fontSize: "1.03rem",
-      background: "#f9f3f2"
-    },
-    prevStatsTd: {
-      padding: "9px 0",
-      textAlign: "center",
-      color: COLOR_CORAL,
-      fontWeight: 900,
-      fontSize: "1.07rem",
-      borderBottom: `1px solid #f3efef`
-    },
-    prevStatsTd2: {
-      padding: "9px 0",
-      textAlign: "center",
-      color: COLOR_CORAL,
-      fontWeight: 900,
-      fontSize: "1.12rem",
-      borderBottom: `1px solid #f3efef`
-    },
     prevCampaignsListSection: {
       background: COLOR_WHITE,
       borderRadius: "18px",
@@ -467,10 +403,6 @@ export default function StatusPage() {
       margin: "24px 0 0 0"
     }
   };
-
-  function handleShowContacts() {
-    setShowContacts((prev) => !prev);
-  }
 
   return (
     <div style={styles.page}>
@@ -550,24 +482,30 @@ export default function StatusPage() {
               <div style={styles.cardTitle}>Previous Booster Campaign</div>
               <div style={styles.cardRow}>
                 <span style={styles.cardLabel}>Campaign Name:</span>
-                <span style={styles.cardValue}>
-                  {previousBoosterCampaignName}
-                </span>
+                <span style={styles.cardValue}>{previousBoosterCampaignName}</span>
               </div>
               <div style={styles.cardRow}>
                 <span style={styles.cardLabel}>Time:</span>
-                <span style={styles.cardValue}>
-                  {previousCampaignTimestamp || "N/A"}
-                </span>
+                <span style={styles.cardValue}>{previousCampaignTimestamp || "N/A"}</span>
               </div>
               <div style={styles.cardRow}>
                 <span style={styles.cardLabel}>Total Added:</span>
-                <span style={styles.cardValue}>
-                  {loading ? "Loading..." : boosterStats.previous}
-                </span>
+                <span style={styles.cardValue}>{loading ? "Loading..." : boosterStats.previous}</span>
               </div>
               <div style={styles.cardRow}>
                 <span style={styles.cardLabel}>1st Message Sent:</span>
+                <span style={styles.cardValue}>Coming soon</span>
+              </div>
+              <div style={styles.cardRow}>
+                <span style={styles.cardLabel}>Remaining:</span>
+                <span style={styles.cardValue}>Coming soon</span>
+              </div>
+              <div style={styles.cardRow}>
+                <span style={styles.cardLabel}>Responded:</span>
+                <span style={styles.cardValue}>Coming soon</span>
+              </div>
+              <div style={styles.cardRow}>
+                <span style={styles.cardLabel}>No Response:</span>
                 <span style={styles.cardValue}>Coming soon</span>
               </div>
             </div>
@@ -576,24 +514,30 @@ export default function StatusPage() {
               <div style={styles.cardTitle}>Current Booster Campaign</div>
               <div style={styles.cardRow}>
                 <span style={styles.cardLabel}>Campaign Name:</span>
-                <span style={styles.cardValue}>
-                  {currentBoosterCampaignName}
-                </span>
+                <span style={styles.cardValue}>{currentBoosterCampaignName}</span>
               </div>
               <div style={styles.cardRow}>
                 <span style={styles.cardLabel}>Time:</span>
-                <span style={styles.cardValue}>
-                  {currentCampaignTimestamp || "N/A"}
-                </span>
+                <span style={styles.cardValue}>{currentCampaignTimestamp || "N/A"}</span>
               </div>
               <div style={styles.cardRow}>
                 <span style={styles.cardLabel}>Total Added:</span>
-                <span style={styles.cardValue}>
-                  {loading ? "Loading..." : boosterStats.current}
-                </span>
+                <span style={styles.cardValue}>{loading ? "Loading..." : boosterStats.current}</span>
               </div>
               <div style={styles.cardRow}>
                 <span style={styles.cardLabel}>1st Message Sent:</span>
+                <span style={styles.cardValue}>Coming soon</span>
+              </div>
+              <div style={styles.cardRow}>
+                <span style={styles.cardLabel}>Remaining:</span>
+                <span style={styles.cardValue}>Coming soon</span>
+              </div>
+              <div style={styles.cardRow}>
+                <span style={styles.cardLabel}>Responded:</span>
+                <span style={styles.cardValue}>Coming soon</span>
+              </div>
+              <div style={styles.cardRow}>
+                <span style={styles.cardLabel}>No Response:</span>
                 <span style={styles.cardValue}>Coming soon</span>
               </div>
             </div>
@@ -615,10 +559,26 @@ export default function StatusPage() {
               <span style={styles.prevDetailsLabel}>Total Added:</span>
               <span style={styles.prevDetailsValue}>
                 {(selectedPrev.contacts && selectedPrev.contacts.length) || 0}
-                <button style={styles.showContactsBtn} onClick={handleShowContacts}>
+                <button style={styles.showContactsBtn} onClick={() => setShowContacts(show => !show)}>
                   {showContacts ? "Hide" : "Show"}
                 </button>
               </span>
+            </div>
+            <div style={styles.prevDetailsRow}>
+              <span style={styles.prevDetailsLabel}>1st Message Sent:</span>
+              <span style={styles.prevDetailsValue}>Coming soon</span>
+            </div>
+            <div style={styles.prevDetailsRow}>
+              <span style={styles.prevDetailsLabel}>Remaining:</span>
+              <span style={styles.prevDetailsValue}>Coming soon</span>
+            </div>
+            <div style={styles.prevDetailsRow}>
+              <span style={styles.prevDetailsLabel}>Responded:</span>
+              <span style={styles.prevDetailsValue}>Coming soon</span>
+            </div>
+            <div style={styles.prevDetailsRow}>
+              <span style={styles.prevDetailsLabel}>No Response:</span>
+              <span style={styles.prevDetailsValue}>Coming soon</span>
             </div>
             {showContacts && selectedPrev.contacts && (
               <div style={styles.contactsList}>
