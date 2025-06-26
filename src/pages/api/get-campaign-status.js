@@ -59,7 +59,7 @@ export default async function handler(req, res) {
     if (!boosterFieldObj) {
       return res
         .status(200)
-        .json({ error: 'Custom field "Booster History Data" not found.', count: 0, contacts: [] });
+        .json({ error: 'Custom field "Booster History Data" not found.', count: 0, contacts: [], previousCampaigns: [] });
     }
 
     const boosterFieldId = boosterFieldObj.id;
@@ -88,9 +88,34 @@ export default async function handler(req, res) {
     const data = await response.json();
     const contacts = data.contacts || [];
 
+    // Extract all unique campaign launches from contacts
+    // campaignKey = `${campaignName}::${isoString}`
+    const campaignMap = {};
+
+    contacts.forEach((contact) => {
+      const boosterFields = (contact.customField || []).filter(
+        (field) => field.id === boosterFieldId && !!field.value
+      );
+      boosterFields.forEach(field => {
+        const launches = extractAllCampaignTimestampsAndNames(field.value);
+        launches.forEach(({ iso, campaignName }) => {
+          const campaignKey = `${campaignName}::${iso}`;
+          if (!campaignMap[campaignKey]) {
+            campaignMap[campaignKey] = {
+              name: campaignName,
+              date: iso,
+              status: "Done" // Placeholder for previous campaigns
+            };
+          }
+        });
+      });
+    });
+
+    // Convert to array and sort by date descending
+    const previousCampaigns = Object.values(campaignMap).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    // --- Keep all previous logic untouched for other fields ---
     // Extract all campaign timestamps & names for all contacts
-    // timestampToContacts: { [iso]: Set(contactId) }
-    // timestampToNames: { [iso]: Set(campaignName) }
     let timestampToContacts = {};
     let timestampToNames = {};
     const boosterContacts = contacts
@@ -140,6 +165,7 @@ export default async function handler(req, res) {
     };
 
     return res.status(200).json({
+      previousCampaigns,
       count: boosterContacts.length,
       contacts: boosterContacts,
       previous: contactsWithPrevious.length,

@@ -8,39 +8,6 @@ const COLOR_LIGHT_BG = "#fafbfc";
 const COLOR_GRAY = "#e5e7eb";
 const COLOR_PRIMARY = COLOR_DARK;
 
-const previousCampaigns = [
-  {
-    name: "Mother's Day Promo",
-    date: "2025-05-01",
-    status: "Done",
-    stats: { total: 140, firstMsg: 110, remaining: 20, waiting: 30, responded: 28, noResponse: 10 },
-  },
-  {
-    name: "Botox Launch Special",
-    date: "2025-04-10",
-    status: "Done",
-    stats: { total: 145, firstMsg: 115, remaining: 25, waiting: 20, responded: 32, noResponse: 8 },
-  },
-  {
-    name: "Spring Glow Campaign",
-    date: "2025-03-20",
-    status: "Done",
-    stats: { total: 150, firstMsg: 120, remaining: 30, waiting: 45, responded: 35, noResponse: 15 },
-  },
-  {
-    name: "Flawless Forehead",
-    date: "2025-02-14",
-    status: "Done",
-    stats: { total: 110, firstMsg: 80, remaining: 18, waiting: 10, responded: 22, noResponse: 5 },
-  },
-  {
-    name: "New Year Kickoff",
-    date: "2025-01-05",
-    status: "Done",
-    stats: { total: 125, firstMsg: 92, remaining: 24, waiting: 12, responded: 30, noResponse: 7 },
-  },
-];
-
 // Utility: Extract all campaign launches (as ISO string) from a string like "...; Date: 06/23/2025 17:13 ..."
 function extractAllCampaignDateTimes(str) {
   if (!str) return [];
@@ -65,8 +32,10 @@ function extractAllCampaignDateTimes(str) {
 
 export default function StatusPage() {
   const [activeTab, setActiveTab] = useState("current");
-  const [selectedPrevIndex, setSelectedPrevIndex] = useState(2); // default to "Spring Glow Campaign"
-  const selectedPrev = previousCampaigns[selectedPrevIndex] || previousCampaigns[0];
+
+  // Dynamically loaded previous campaigns
+  const [previousCampaigns, setPreviousCampaigns] = useState([]);
+  const [selectedPrevIndex, setSelectedPrevIndex] = useState(0);
 
   const [boosterStats, setBoosterStats] = useState({ previous: 0, current: 0, contacts: [] });
   const [boosterHistoryCount, setBoosterHistoryCount] = useState(null);
@@ -84,6 +53,8 @@ export default function StatusPage() {
       try {
         const statsRes = await fetch("/api/get-campaign-status");
         const statsData = await statsRes.json();
+
+        // For current/previous stats, etc.
         setBoosterStats({
           previous: statsData.previous,
           current: statsData.current,
@@ -95,11 +66,12 @@ export default function StatusPage() {
         if (typeof statsData.totalCampaigns === "number") {
           setTotalCampaignLaunches(statsData.totalCampaigns);
         }
-        // Use the backend provided campaign names and timestamps
         setCurrentBoosterCampaignName(statsData.currentBoosterCampaignName || "Current Booster Campaign");
         setPreviousBoosterCampaignName(statsData.previousBoosterCampaignName || "Previous Booster Campaign");
         setCurrentCampaignTimestamp(statsData.currentCampaignTimestamp ? new Date(statsData.currentCampaignTimestamp).toLocaleString() : "");
         setPreviousCampaignTimestamp(statsData.previousCampaignTimestamp ? new Date(statsData.previousCampaignTimestamp).toLocaleString() : "");
+        // Dynamically loaded previous campaigns for the table
+        setPreviousCampaigns(statsData.previousCampaigns || []);
       } catch (err) {
         setBoosterStats({ previous: 0, current: 0, contacts: [] });
         setBoosterHistoryCount(null);
@@ -108,6 +80,7 @@ export default function StatusPage() {
         setCurrentCampaignTimestamp("");
         setPreviousCampaignTimestamp("");
         setTotalCampaignLaunches(0);
+        setPreviousCampaigns([]);
       }
       setLoading(false);
     }
@@ -126,6 +99,8 @@ export default function StatusPage() {
     if (!bDate) return -1;
     return aDate - bDate;
   });
+
+  const selectedPrev = previousCampaigns[selectedPrevIndex] || previousCampaigns[0] || {};
 
   const styles = {
     page: {
@@ -606,40 +581,12 @@ export default function StatusPage() {
           <div style={styles.prevDetails}>
             <div style={styles.prevDetailsRow}>
               <span style={styles.prevDetailsLabel}>Campaign Name:</span>
-              <span style={styles.prevDetailsValue}>{selectedPrev.name}</span>
+              <span style={styles.prevDetailsValue}>{selectedPrev?.name || "N/A"}</span>
             </div>
             <div style={styles.prevDetailsRow}>
               <span style={styles.prevDetailsLabel}>Date:</span>
-              <span style={styles.prevDetailsValue}>{selectedPrev.date}</span>
+              <span style={styles.prevDetailsValue}>{selectedPrev?.date || "N/A"}</span>
             </div>
-            <table style={styles.prevStatsTable}>
-              <thead>
-                <tr>
-                  <th style={styles.prevStatsTh}>Total Added</th>
-                  <th style={styles.prevStatsTh}>1st Message</th>
-                  <th style={styles.prevStatsTh}>Remaining</th>
-                  <th style={styles.prevStatsTh}>Waiting</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style={styles.prevStatsTd}>{selectedPrev?.stats?.total ?? 0}</td>
-                  <td style={styles.prevStatsTd}>{selectedPrev?.stats?.firstMsg ?? 0}</td>
-                  <td style={styles.prevStatsTd}>{selectedPrev?.stats?.remaining ?? 0}</td>
-                  <td style={styles.prevStatsTd}>{selectedPrev?.stats?.waiting ?? 0}</td>
-                </tr>
-                <tr>
-                  <th style={styles.prevStatsTh}>Responded</th>
-                  <th style={styles.prevStatsTh}>No Response</th>
-                  <th style={{ ...styles.prevStatsTh, background: "none", border: "none" }} colSpan={2}></th>
-                </tr>
-                <tr>
-                  <td style={styles.prevStatsTd2}>{selectedPrev?.stats?.responded ?? 0}</td>
-                  <td style={styles.prevStatsTd2}>{selectedPrev?.stats?.noResponse ?? 0}</td>
-                  <td colSpan={2} style={{ border: "none", background: "none" }}></td>
-                </tr>
-              </tbody>
-            </table>
           </div>
           {/* Previous Campaigns List */}
           <div style={styles.prevCampaignsListSection}>
