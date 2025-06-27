@@ -109,6 +109,15 @@ export default function StatusPage() {
 
   const selectedPrev = previousCampaigns[selectedPrevIndex] || previousCampaigns[0] || {};
 
+  // helpers for Remaining
+  const prevTotal = boosterStats.previous;
+  const currTotal = boosterStats.current;
+  const prevRemaining = prevTotal - previousFirstMsgCount;
+  const currRemaining = currTotal - currentFirstMsgCount;
+  const selectedPrevFirstMsg = selectedPrev && typeof selectedPrev.firstMsgCount === "number" ? selectedPrev.firstMsgCount : 0;
+  const selectedPrevTotal = selectedPrev && selectedPrev.contacts ? selectedPrev.contacts.length : 0;
+  const selectedPrevRemaining = selectedPrevTotal - selectedPrevFirstMsg;
+
   const styles = {
     page: {
       minHeight: "100vh",
@@ -396,10 +405,6 @@ export default function StatusPage() {
     }
   };
 
-  // helper: get firstMsgCount for selected previous campaign
-  const selectedPrevFirstMsg = selectedPrev && typeof selectedPrev.firstMsgCount === "number"
-    ? selectedPrev.firstMsgCount : 0;
-
   return (
     <div style={styles.page}>
       {/* Header with logo on right */}
@@ -486,7 +491,7 @@ export default function StatusPage() {
               </div>
               <div style={styles.cardRow}>
                 <span style={styles.cardLabel}>Total Added:</span>
-                <span style={styles.cardValue}>{loading ? "Loading..." : boosterStats.previous}</span>
+                <span style={styles.cardValue}>{loading ? "Loading..." : prevTotal}</span>
               </div>
               <div style={styles.cardRow}>
                 <span style={styles.cardLabel}>1st Message Sent:</span>
@@ -494,7 +499,7 @@ export default function StatusPage() {
               </div>
               <div style={styles.cardRow}>
                 <span style={styles.cardLabel}>Remaining:</span>
-                <span style={styles.cardValue}>Coming soon</span>
+                <span style={styles.cardValue}>{Math.max(prevRemaining, 0)}</span>
               </div>
               <div style={styles.cardRow}>
                 <span style={styles.cardLabel}>Responded:</span>
@@ -518,7 +523,7 @@ export default function StatusPage() {
               </div>
               <div style={styles.cardRow}>
                 <span style={styles.cardLabel}>Total Added:</span>
-                <span style={styles.cardValue}>{loading ? "Loading..." : boosterStats.current}</span>
+                <span style={styles.cardValue}>{loading ? "Loading..." : currTotal}</span>
               </div>
               <div style={styles.cardRow}>
                 <span style={styles.cardLabel}>1st Message Sent:</span>
@@ -526,7 +531,7 @@ export default function StatusPage() {
               </div>
               <div style={styles.cardRow}>
                 <span style={styles.cardLabel}>Remaining:</span>
-                <span style={styles.cardValue}>Coming soon</span>
+                <span style={styles.cardValue}>{Math.max(currRemaining, 0)}</span>
               </div>
               <div style={styles.cardRow}>
                 <span style={styles.cardLabel}>Responded:</span>
@@ -566,7 +571,7 @@ export default function StatusPage() {
             </div>
             <div style={styles.prevDetailsRow}>
               <span style={styles.prevDetailsLabel}>Remaining:</span>
-              <span style={styles.prevDetailsValue}>Coming soon</span>
+              <span style={styles.prevDetailsValue}>{Math.max(selectedPrevRemaining, 0)}</span>
             </div>
             <div style={styles.prevDetailsRow}>
               <span style={styles.prevDetailsLabel}>Responded:</span>
