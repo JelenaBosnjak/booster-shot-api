@@ -30,7 +30,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. Fetch all custom fields to get the ID for "Booster History Data"
+    // 1. Fetch all custom fields to get the ID for "Booster History Data" and "1st Message Sent"
     const fieldsUrl = `https://rest.gohighlevel.com/v1/custom-fields/`;
     const fieldsResponse = await fetch(fieldsUrl, {
       headers: {
@@ -55,14 +55,23 @@ export default async function handler(req, res) {
     const boosterFieldObj = (fieldsData.customFields || []).find(
       (f) => f.name && f.name.toLowerCase() === "booster history data"
     );
+    const firstMsgFieldObj = (fieldsData.customFields || []).find(
+      (f) => f.name && f.name.toLowerCase() === "1st message sent"
+    );
 
     if (!boosterFieldObj) {
       return res
         .status(200)
         .json({ error: 'Custom field "Booster History Data" not found.', count: 0, contacts: [], previousCampaigns: [] });
     }
+    if (!firstMsgFieldObj) {
+      return res
+        .status(200)
+        .json({ error: 'Custom field "1st Message Sent" not found.', count: 0, contacts: [], previousCampaigns: [] });
+    }
 
     const boosterFieldId = boosterFieldObj.id;
+    const firstMsgFieldId = firstMsgFieldObj.id;
 
     // 2. Fetch contacts
     const ghlUrl = `https://rest.gohighlevel.com/v1/contacts?limit=100`;
@@ -90,13 +99,17 @@ export default async function handler(req, res) {
 
     // campaignKey = `${campaignName}::${isoString}`
     const campaignMap = {};
-    // To collect contacts for each campaign
     const campaignContacts = {};
+    const campaignFirstMsgCounts = {};
 
     contacts.forEach((contact) => {
       const boosterFields = (contact.customField || []).filter(
         (field) => field.id === boosterFieldId && !!field.value
       );
+      const firstMsgField = (contact.customField || []).find(
+        (field) => field.id === firstMsgFieldId && !!field.value
+      );
+
       boosterFields.forEach(field => {
         const launches = extractAllCampaignTimestampsAndNames(field.value);
         launches.forEach(({ iso, campaignName }) => {
@@ -108,6 +121,7 @@ export default async function handler(req, res) {
               status: "Done"
             };
             campaignContacts[campaignKey] = [];
+            campaignFirstMsgCounts[campaignKey] = 0;
           }
           campaignContacts[campaignKey].push({
             id: contact.id,
@@ -115,6 +129,20 @@ export default async function handler(req, res) {
             lastName: contact.lastName,
             phone: contact.phone
           });
+
+          // Count 1st Message Sent for this campaign if field contains data with separator ||
+          if (firstMsgField && typeof firstMsgField.value === "string") {
+            // Count "||" as separator, so each occurrence = 1 sent SMS
+            // If the custom field contains multiple campaign launches, they should be separated by "||"
+            // Ex: "Campaign Name: ...; Date: ...; Message Sent||Campaign Name: ...; Date: ...; Message Sent"
+            // We count the number of "||" plus 1 for the first message
+            const count = firstMsgField.value.split("||").filter(v => v.trim()).length;
+            // Always add at most one for this contact/campaign
+            // This is a simple solution: if the 1st Message Sent field has any data, count as 1 (for this lead in this campaign)
+            if (count > 0) {
+              campaignFirstMsgCounts[campaignKey]++;
+            }
+          }
         });
       });
     });
@@ -123,7 +151,8 @@ export default async function handler(req, res) {
     const previousCampaigns = Object.values(campaignMap)
       .map(campaign => ({
         ...campaign,
-        contacts: campaignContacts[`${campaign.name}::${campaign.date}`] || []
+        contacts: campaignContacts[`${campaign.name}::${campaign.date}`] || [],
+        firstMsgCount: campaignFirstMsgCounts[`${campaign.name}::${campaign.date}`] || 0
       }))
       .sort((a, b) => new Date(b.date) - new Date(a.date));
 
@@ -174,6 +203,14 @@ export default async function handler(req, res) {
       return arr.length === 1 ? arr[0] : arr.join(", ");
     };
 
+    // Find "firstMsgCount" for current and previous campaigns
+    const currentCampaignKey = previousCampaigns.length > 0
+      ? `${previousCampaigns[0].name}::${previousCampaigns[0].date}`
+      : null;
+    const previousCampaignKey = previousCampaigns.length > 1
+      ? `${previousCampaigns[1].name}::${previousCampaigns[1].date}`
+      : null;
+
     return res.status(200).json({
       previousCampaigns,
       count: boosterContacts.length,
@@ -184,7 +221,9 @@ export default async function handler(req, res) {
       previousBoosterCampaignName: getNamesForTimestamp(previousTimestamp),
       currentCampaignTimestamp: currentTimestamp ? new Date(currentTimestamp).toISOString() : null,
       previousCampaignTimestamp: previousTimestamp ? new Date(previousTimestamp).toISOString() : null,
-      totalCampaigns: allTimestampsSorted.length
+      totalCampaigns: allTimestampsSorted.length,
+      currentFirstMsgCount: currentCampaignKey ? campaignFirstMsgCounts[currentCampaignKey] || 0 : 0,
+      previousFirstMsgCount: previousCampaignKey ? campaignFirstMsgCounts[previousCampaignKey] || 0 : 0
     });
   } catch (error) {
     return res.status(500).json({ error: error.message || "Internal Server Error" });

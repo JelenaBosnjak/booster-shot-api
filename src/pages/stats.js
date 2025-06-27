@@ -48,6 +48,10 @@ export default function StatusPage() {
   const [previousCampaignTimestamp, setPreviousCampaignTimestamp] = useState("");
   const [totalCampaignLaunches, setTotalCampaignLaunches] = useState(0);
 
+  // New: store 1st Message Sent counts for current/previous
+  const [currentFirstMsgCount, setCurrentFirstMsgCount] = useState(0);
+  const [previousFirstMsgCount, setPreviousFirstMsgCount] = useState(0);
+
   useEffect(() => {
     async function fetchStats() {
       setLoading(true);
@@ -71,6 +75,8 @@ export default function StatusPage() {
         setCurrentCampaignTimestamp(statsData.currentCampaignTimestamp ? new Date(statsData.currentCampaignTimestamp).toLocaleString() : "");
         setPreviousCampaignTimestamp(statsData.previousCampaignTimestamp ? new Date(statsData.previousCampaignTimestamp).toLocaleString() : "");
         setPreviousCampaigns(statsData.previousCampaigns || []);
+        setCurrentFirstMsgCount(statsData.currentFirstMsgCount || 0);
+        setPreviousFirstMsgCount(statsData.previousFirstMsgCount || 0);
       } catch (err) {
         setBoosterStats({ previous: 0, current: 0, contacts: [] });
         setBoosterHistoryCount(null);
@@ -80,6 +86,8 @@ export default function StatusPage() {
         setPreviousCampaignTimestamp("");
         setTotalCampaignLaunches(0);
         setPreviousCampaigns([]);
+        setCurrentFirstMsgCount(0);
+        setPreviousFirstMsgCount(0);
       }
       setLoading(false);
     }
@@ -101,23 +109,7 @@ export default function StatusPage() {
 
   const selectedPrev = previousCampaigns[selectedPrevIndex] || previousCampaigns[0] || {};
 
-  // For demonstration, using dummy values for stats.
-  // Replace these with real data from your backend if available.
-  function getStatsFor(type) {
-    // You should adapt this to get stats from your backend if you add them
-    return {
-      total: (type === "previous"
-        ? (selectedPrev.contacts ? selectedPrev.contacts.length : 0)
-        : (type === "current" ? boosterStats.current : boosterStats.previous)),
-      firstMsg: "Coming soon",
-      remaining: "Coming soon",
-      responded: "Coming soon",
-      noResponse: "Coming soon"
-    };
-  }
-
   const styles = {
-    // ...styles unchanged (same as your code)...
     page: {
       minHeight: "100vh",
       background: COLOR_LIGHT_BG,
@@ -404,6 +396,10 @@ export default function StatusPage() {
     }
   };
 
+  // helper: get firstMsgCount for selected previous campaign
+  const selectedPrevFirstMsg = selectedPrev && typeof selectedPrev.firstMsgCount === "number"
+    ? selectedPrev.firstMsgCount : 0;
+
   return (
     <div style={styles.page}>
       {/* Header with logo on right */}
@@ -494,7 +490,7 @@ export default function StatusPage() {
               </div>
               <div style={styles.cardRow}>
                 <span style={styles.cardLabel}>1st Message Sent:</span>
-                <span style={styles.cardValue}>Coming soon</span>
+                <span style={styles.cardValue}>{previousFirstMsgCount}</span>
               </div>
               <div style={styles.cardRow}>
                 <span style={styles.cardLabel}>Remaining:</span>
@@ -526,7 +522,7 @@ export default function StatusPage() {
               </div>
               <div style={styles.cardRow}>
                 <span style={styles.cardLabel}>1st Message Sent:</span>
-                <span style={styles.cardValue}>Coming soon</span>
+                <span style={styles.cardValue}>{currentFirstMsgCount}</span>
               </div>
               <div style={styles.cardRow}>
                 <span style={styles.cardLabel}>Remaining:</span>
@@ -566,7 +562,7 @@ export default function StatusPage() {
             </div>
             <div style={styles.prevDetailsRow}>
               <span style={styles.prevDetailsLabel}>1st Message Sent:</span>
-              <span style={styles.prevDetailsValue}>Coming soon</span>
+              <span style={styles.prevDetailsValue}>{selectedPrevFirstMsg}</span>
             </div>
             <div style={styles.prevDetailsRow}>
               <span style={styles.prevDetailsLabel}>Remaining:</span>
