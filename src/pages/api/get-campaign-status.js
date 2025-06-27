@@ -29,6 +29,18 @@ export default async function handler(req, res) {
     return launches;
   }
 
+  // Extract all campaign names from a string like "Campaign Name: ...; Date: ...; ...||Campaign Name: ...; Date: ...; ..."
+  function extractAllCampaignNames(str) {
+    if (!str) return [];
+    const regex = /Campaign Name:\s*([^;]+);/g;
+    let names = [];
+    let match;
+    while ((match = regex.exec(str)) !== null) {
+      names.push(match[1].trim());
+    }
+    return names;
+  }
+
   try {
     // 1. Fetch all custom fields to get the ID for "Booster History Data" and "1st Message Sent"
     const fieldsUrl = `https://rest.gohighlevel.com/v1/custom-fields/`;
@@ -109,6 +121,8 @@ export default async function handler(req, res) {
       const firstMsgField = (contact.customField || []).find(
         (field) => field.id === firstMsgFieldId && !!field.value
       );
+      // Extract all campaign names from 1st Message Sent field for this contact
+      const sentCampaignNames = firstMsgField ? extractAllCampaignNames(firstMsgField.value) : [];
 
       boosterFields.forEach(field => {
         const launches = extractAllCampaignTimestampsAndNames(field.value);
@@ -130,18 +144,9 @@ export default async function handler(req, res) {
             phone: contact.phone
           });
 
-          // Count 1st Message Sent for this campaign if field contains data with separator ||
-          if (firstMsgField && typeof firstMsgField.value === "string") {
-            // Count "||" as separator, so each occurrence = 1 sent SMS
-            // If the custom field contains multiple campaign launches, they should be separated by "||"
-            // Ex: "Campaign Name: ...; Date: ...; Message Sent||Campaign Name: ...; Date: ...; Message Sent"
-            // We count the number of "||" plus 1 for the first message
-            const count = firstMsgField.value.split("||").filter(v => v.trim()).length;
-            // Always add at most one for this contact/campaign
-            // This is a simple solution: if the 1st Message Sent field has any data, count as 1 (for this lead in this campaign)
-            if (count > 0) {
-              campaignFirstMsgCounts[campaignKey]++;
-            }
+          // Only count as "1st Message Sent" if campaign name matches
+          if (sentCampaignNames.includes(campaignName)) {
+            campaignFirstMsgCounts[campaignKey]++;
           }
         });
       });
