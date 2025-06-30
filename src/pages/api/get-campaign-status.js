@@ -1,10 +1,12 @@
 export default async function handler(req, res) {
   if (req.method !== "GET") {
+    console.log("Request method not allowed:", req.method);
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   const API_TOKEN = process.env.GHL_API_TOKEN;
   if (!API_TOKEN) {
+    console.error("Missing API token");
     return res.status(500).json({ error: "Missing API token" });
   }
 
@@ -44,6 +46,7 @@ export default async function handler(req, res) {
   try {
     // 1. Fetch all custom fields to get the IDs for needed fields
     const fieldsUrl = `https://rest.gohighlevel.com/v1/custom-fields/`;
+    console.log("Fetching custom fields...");
     const fieldsResponse = await fetch(fieldsUrl, {
       headers: {
         Authorization: `Bearer ${API_TOKEN}`,
@@ -58,12 +61,15 @@ export default async function handler(req, res) {
       } catch {
         error = { message: "Unknown API error" };
       }
+      console.error("Failed to fetch custom fields:", error);
       return res
         .status(fieldsResponse.status)
         .json({ error: error.message || "API Error" });
     }
 
     const fieldsData = await fieldsResponse.json();
+    console.log("Fetched custom fields:", (fieldsData.customFields || []).map(f => f.name));
+
     const boosterFieldObj = (fieldsData.customFields || []).find(
       (f) => f.name && f.name.toLowerCase() === "booster history data"
     );
@@ -78,21 +84,25 @@ export default async function handler(req, res) {
     );
 
     if (!boosterFieldObj) {
+      console.warn('Custom field "Booster History Data" not found.');
       return res
         .status(200)
         .json({ error: 'Custom field "Booster History Data" not found.', count: 0, contacts: [], previousCampaigns: [] });
     }
     if (!firstMsgFieldObj) {
+      console.warn('Custom field "1st Message Sent" not found.');
       return res
         .status(200)
         .json({ error: 'Custom field "1st Message Sent" not found.', count: 0, contacts: [], previousCampaigns: [] });
     }
     if (!respondedFieldObj) {
+      console.warn('Custom field "Responded" not found.');
       return res
         .status(200)
         .json({ error: 'Custom field "Responded" not found.', count: 0, contacts: [], previousCampaigns: [] });
     }
     if (!noResponseFieldObj) {
+      console.warn('Custom field "No Response" not found.');
       return res
         .status(200)
         .json({ error: 'Custom field "No Response" not found.', count: 0, contacts: [], previousCampaigns: [] });
@@ -105,6 +115,7 @@ export default async function handler(req, res) {
 
     // 2. Fetch contacts
     const ghlUrl = `https://rest.gohighlevel.com/v1/contacts?limit=100`;
+    console.log("Fetching contacts...");
     const response = await fetch(ghlUrl, {
       headers: {
         Authorization: `Bearer ${API_TOKEN}`,
@@ -119,6 +130,7 @@ export default async function handler(req, res) {
       } catch {
         error = { message: "Unknown API error" };
       }
+      console.error("Failed to fetch contacts:", error);
       return res
         .status(response.status)
         .json({ error: error.message || "API Error" });
@@ -126,6 +138,7 @@ export default async function handler(req, res) {
 
     const data = await response.json();
     const contacts = data.contacts || [];
+    console.log("Fetched contacts count:", contacts.length);
 
     // campaignKey = `${campaignName}::${isoString}`
     const campaignMap = {};
@@ -134,7 +147,11 @@ export default async function handler(req, res) {
     const campaignRespondedCounts = {};
     const campaignNoResponseCounts = {};
 
-    contacts.forEach((contact) => {
+    contacts.forEach((contact, i) => {
+      if (!contact.customField || !Array.isArray(contact.customField)) {
+        console.log(`Contact ${contact.id} has no customField property (index ${i})`);
+      }
+
       const boosterFields = (contact.customField || []).filter(
         (field) => field.id === boosterFieldId && !!field.value
       );
@@ -152,6 +169,14 @@ export default async function handler(req, res) {
       const sentCampaignNames = firstMsgField ? extractAllCampaignNames(firstMsgField.value) : [];
       const respondedCampaignNames = respondedField ? extractAllCampaignNames(respondedField.value) : [];
       const noResponseCampaignNames = noResponseField ? extractAllCampaignNames(noResponseField.value) : [];
+
+      if (i < 5) {
+        console.log(`Contact ${i} (${contact.firstName} ${contact.lastName}):`);
+        console.log("  BoosterFields:", boosterFields.map(f => f.value));
+        console.log("  1stMsgCampaigns:", sentCampaignNames);
+        console.log("  RespondedCampaigns:", respondedCampaignNames);
+        console.log("  NoResponseCampaigns:", noResponseCampaignNames);
+      }
 
       boosterFields.forEach(field => {
         const launches = extractAllCampaignTimestampsAndNames(field.value);
@@ -257,6 +282,12 @@ export default async function handler(req, res) {
       ? `${previousCampaigns[1].name}::${previousCampaigns[1].date}`
       : null;
 
+    console.log("Returning results for campaigns:", {
+      currentCampaignKey,
+      previousCampaignKey,
+      previousCampaignsCount: previousCampaigns.length
+    });
+
     return res.status(200).json({
       previousCampaigns,
       count: boosterContacts.length,
@@ -276,6 +307,7 @@ export default async function handler(req, res) {
       previousNoResponseCount: previousCampaignKey ? campaignNoResponseCounts[previousCampaignKey] || 0 : 0
     });
   } catch (error) {
+    console.error("Handler error:", error);
     return res.status(500).json({ error: error.message || "Internal Server Error" });
   }
 }
