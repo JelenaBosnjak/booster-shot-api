@@ -42,7 +42,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. Fetch all custom fields to get the ID for "Booster History Data" and "1st Message Sent"
+    // 1. Fetch all custom fields to get the IDs for needed fields
     const fieldsUrl = `https://rest.gohighlevel.com/v1/custom-fields/`;
     const fieldsResponse = await fetch(fieldsUrl, {
       headers: {
@@ -70,6 +70,12 @@ export default async function handler(req, res) {
     const firstMsgFieldObj = (fieldsData.customFields || []).find(
       (f) => f.name && f.name.toLowerCase() === "1st message sent"
     );
+    const respondedFieldObj = (fieldsData.customFields || []).find(
+      (f) => f.name && f.name.toLowerCase() === "responded"
+    );
+    const noResponseFieldObj = (fieldsData.customFields || []).find(
+      (f) => f.name && f.name.toLowerCase() === "no response"
+    );
 
     if (!boosterFieldObj) {
       return res
@@ -81,9 +87,21 @@ export default async function handler(req, res) {
         .status(200)
         .json({ error: 'Custom field "1st Message Sent" not found.', count: 0, contacts: [], previousCampaigns: [] });
     }
+    if (!respondedFieldObj) {
+      return res
+        .status(200)
+        .json({ error: 'Custom field "Responded" not found.', count: 0, contacts: [], previousCampaigns: [] });
+    }
+    if (!noResponseFieldObj) {
+      return res
+        .status(200)
+        .json({ error: 'Custom field "No Response" not found.', count: 0, contacts: [], previousCampaigns: [] });
+    }
 
     const boosterFieldId = boosterFieldObj.id;
     const firstMsgFieldId = firstMsgFieldObj.id;
+    const respondedFieldId = respondedFieldObj.id;
+    const noResponseFieldId = noResponseFieldObj.id;
 
     // 2. Fetch contacts
     const ghlUrl = `https://rest.gohighlevel.com/v1/contacts?limit=100`;
@@ -113,6 +131,8 @@ export default async function handler(req, res) {
     const campaignMap = {};
     const campaignContacts = {};
     const campaignFirstMsgCounts = {};
+    const campaignRespondedCounts = {};
+    const campaignNoResponseCounts = {};
 
     contacts.forEach((contact) => {
       const boosterFields = (contact.customField || []).filter(
@@ -121,8 +141,17 @@ export default async function handler(req, res) {
       const firstMsgField = (contact.customField || []).find(
         (field) => field.id === firstMsgFieldId && !!field.value
       );
-      // Extract all campaign names from 1st Message Sent field for this contact
+      const respondedField = (contact.customField || []).find(
+        (field) => field.id === respondedFieldId && !!field.value
+      );
+      const noResponseField = (contact.customField || []).find(
+        (field) => field.id === noResponseFieldId && !!field.value
+      );
+
+      // Extract all campaign names from 1st Message Sent, Responded, and No Response fields for this contact
       const sentCampaignNames = firstMsgField ? extractAllCampaignNames(firstMsgField.value) : [];
+      const respondedCampaignNames = respondedField ? extractAllCampaignNames(respondedField.value) : [];
+      const noResponseCampaignNames = noResponseField ? extractAllCampaignNames(noResponseField.value) : [];
 
       boosterFields.forEach(field => {
         const launches = extractAllCampaignTimestampsAndNames(field.value);
@@ -136,6 +165,8 @@ export default async function handler(req, res) {
             };
             campaignContacts[campaignKey] = [];
             campaignFirstMsgCounts[campaignKey] = 0;
+            campaignRespondedCounts[campaignKey] = 0;
+            campaignNoResponseCounts[campaignKey] = 0;
           }
           campaignContacts[campaignKey].push({
             id: contact.id,
@@ -148,6 +179,14 @@ export default async function handler(req, res) {
           if (sentCampaignNames.includes(campaignName)) {
             campaignFirstMsgCounts[campaignKey]++;
           }
+          // Only count as "Responded" if campaign name matches
+          if (respondedCampaignNames.includes(campaignName)) {
+            campaignRespondedCounts[campaignKey]++;
+          }
+          // Only count as "No Response" if campaign name matches
+          if (noResponseCampaignNames.includes(campaignName)) {
+            campaignNoResponseCounts[campaignKey]++;
+          }
         });
       });
     });
@@ -157,7 +196,9 @@ export default async function handler(req, res) {
       .map(campaign => ({
         ...campaign,
         contacts: campaignContacts[`${campaign.name}::${campaign.date}`] || [],
-        firstMsgCount: campaignFirstMsgCounts[`${campaign.name}::${campaign.date}`] || 0
+        firstMsgCount: campaignFirstMsgCounts[`${campaign.name}::${campaign.date}`] || 0,
+        respondedCount: campaignRespondedCounts[`${campaign.name}::${campaign.date}`] || 0,
+        noResponseCount: campaignNoResponseCounts[`${campaign.name}::${campaign.date}`] || 0
       }))
       .sort((a, b) => new Date(b.date) - new Date(a.date));
 
@@ -208,7 +249,7 @@ export default async function handler(req, res) {
       return arr.length === 1 ? arr[0] : arr.join(", ");
     };
 
-    // Find "firstMsgCount" for current and previous campaigns
+    // Find "firstMsgCount", "respondedCount" and "noResponseCount" for current and previous campaigns
     const currentCampaignKey = previousCampaigns.length > 0
       ? `${previousCampaigns[0].name}::${previousCampaigns[0].date}`
       : null;
@@ -228,7 +269,11 @@ export default async function handler(req, res) {
       previousCampaignTimestamp: previousTimestamp ? new Date(previousTimestamp).toISOString() : null,
       totalCampaigns: allTimestampsSorted.length,
       currentFirstMsgCount: currentCampaignKey ? campaignFirstMsgCounts[currentCampaignKey] || 0 : 0,
-      previousFirstMsgCount: previousCampaignKey ? campaignFirstMsgCounts[previousCampaignKey] || 0 : 0
+      previousFirstMsgCount: previousCampaignKey ? campaignFirstMsgCounts[previousCampaignKey] || 0 : 0,
+      currentRespondedCount: currentCampaignKey ? campaignRespondedCounts[currentCampaignKey] || 0 : 0,
+      previousRespondedCount: previousCampaignKey ? campaignRespondedCounts[previousCampaignKey] || 0 : 0,
+      currentNoResponseCount: currentCampaignKey ? campaignNoResponseCounts[currentCampaignKey] || 0 : 0,
+      previousNoResponseCount: previousCampaignKey ? campaignNoResponseCounts[previousCampaignKey] || 0 : 0
     });
   } catch (error) {
     return res.status(500).json({ error: error.message || "Internal Server Error" });

@@ -48,9 +48,13 @@ export default function StatusPage() {
   const [previousCampaignTimestamp, setPreviousCampaignTimestamp] = useState("");
   const [totalCampaignLaunches, setTotalCampaignLaunches] = useState(0);
 
-  // New: store 1st Message Sent counts for current/previous
+  // New: store counts for current/previous
   const [currentFirstMsgCount, setCurrentFirstMsgCount] = useState(0);
   const [previousFirstMsgCount, setPreviousFirstMsgCount] = useState(0);
+  const [currentRespondedCount, setCurrentRespondedCount] = useState(0);
+  const [previousRespondedCount, setPreviousRespondedCount] = useState(0);
+  const [currentNoResponseCount, setCurrentNoResponseCount] = useState(0);
+  const [previousNoResponseCount, setPreviousNoResponseCount] = useState(0);
 
   useEffect(() => {
     async function fetchStats() {
@@ -77,6 +81,10 @@ export default function StatusPage() {
         setPreviousCampaigns(statsData.previousCampaigns || []);
         setCurrentFirstMsgCount(statsData.currentFirstMsgCount || 0);
         setPreviousFirstMsgCount(statsData.previousFirstMsgCount || 0);
+        setCurrentRespondedCount(statsData.currentRespondedCount || 0);
+        setPreviousRespondedCount(statsData.previousRespondedCount || 0);
+        setCurrentNoResponseCount(statsData.currentNoResponseCount || 0);
+        setPreviousNoResponseCount(statsData.previousNoResponseCount || 0);
       } catch (err) {
         setBoosterStats({ previous: 0, current: 0, contacts: [] });
         setBoosterHistoryCount(null);
@@ -88,6 +96,10 @@ export default function StatusPage() {
         setPreviousCampaigns([]);
         setCurrentFirstMsgCount(0);
         setPreviousFirstMsgCount(0);
+        setCurrentRespondedCount(0);
+        setPreviousRespondedCount(0);
+        setCurrentNoResponseCount(0);
+        setPreviousNoResponseCount(0);
       }
       setLoading(false);
     }
@@ -117,6 +129,10 @@ export default function StatusPage() {
   const selectedPrevFirstMsg = selectedPrev && typeof selectedPrev.firstMsgCount === "number" ? selectedPrev.firstMsgCount : 0;
   const selectedPrevTotal = selectedPrev && selectedPrev.contacts ? selectedPrev.contacts.length : 0;
   const selectedPrevRemaining = selectedPrevTotal - selectedPrevFirstMsg;
+
+  // helpers for Responded/No Response
+  const selectedPrevResponded = selectedPrev && typeof selectedPrev.respondedCount === "number" ? selectedPrev.respondedCount : 0;
+  const selectedPrevNoResponse = selectedPrev && typeof selectedPrev.noResponseCount === "number" ? selectedPrev.noResponseCount : 0;
 
   const styles = {
     page: {
@@ -503,11 +519,11 @@ export default function StatusPage() {
               </div>
               <div style={styles.cardRow}>
                 <span style={styles.cardLabel}>Responded:</span>
-                <span style={styles.cardValue}>Coming soon</span>
+                <span style={styles.cardValue}>{previousRespondedCount}</span>
               </div>
               <div style={styles.cardRow}>
                 <span style={styles.cardLabel}>No Response:</span>
-                <span style={styles.cardValue}>Coming soon</span>
+                <span style={styles.cardValue}>{previousNoResponseCount}</span>
               </div>
             </div>
             {/* Current Booster Campaign Card */}
@@ -535,11 +551,11 @@ export default function StatusPage() {
               </div>
               <div style={styles.cardRow}>
                 <span style={styles.cardLabel}>Responded:</span>
-                <span style={styles.cardValue}>Coming soon</span>
+                <span style={styles.cardValue}>{currentRespondedCount}</span>
               </div>
               <div style={styles.cardRow}>
                 <span style={styles.cardLabel}>No Response:</span>
-                <span style={styles.cardValue}>Coming soon</span>
+                <span style={styles.cardValue}>{currentNoResponseCount}</span>
               </div>
             </div>
           </div>
@@ -575,11 +591,11 @@ export default function StatusPage() {
             </div>
             <div style={styles.prevDetailsRow}>
               <span style={styles.prevDetailsLabel}>Responded:</span>
-              <span style={styles.prevDetailsValue}>Coming soon</span>
+              <span style={styles.prevDetailsValue}>{selectedPrevResponded}</span>
             </div>
             <div style={styles.prevDetailsRow}>
               <span style={styles.prevDetailsLabel}>No Response:</span>
-              <span style={styles.prevDetailsValue}>Coming soon</span>
+              <span style={styles.prevDetailsValue}>{selectedPrevNoResponse}</span>
             </div>
             {showContacts && selectedPrev.contacts && (
               <div style={styles.contactsList}>
