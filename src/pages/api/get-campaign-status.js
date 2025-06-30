@@ -10,6 +10,11 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Missing API token" });
   }
 
+  // Helper to always get array for custom fields, never error on not-array
+  function getCustomFieldsArr(cf) {
+    return Array.isArray(cf) ? cf : [];
+  }
+
   // Extract all campaign launches (timestamp + campaign name) from a booster field string
   function extractAllCampaignTimestampsAndNames(str) {
     if (!str) return [];
@@ -148,20 +153,22 @@ export default async function handler(req, res) {
     const campaignNoResponseCounts = {};
 
     contacts.forEach((contact, i) => {
-      if (!contact.customField || !Array.isArray(contact.customField)) {
-        console.log(`Contact ${contact.id} has no customField property (index ${i})`);
+      const customFieldsArr = getCustomFieldsArr(contact.customField);
+
+      if (!Array.isArray(contact.customField)) {
+        console.log(`Contact ${contact.id} has no customField array (index ${i})`);
       }
 
-      const boosterFields = (contact.customField || []).filter(
+      const boosterFields = customFieldsArr.filter(
         (field) => field.id === boosterFieldId && !!field.value
       );
-      const firstMsgField = (contact.customField || []).find(
+      const firstMsgField = customFieldsArr.find(
         (field) => field.id === firstMsgFieldId && !!field.value
       );
-      const respondedField = (contact.customField || []).find(
+      const respondedField = customFieldsArr.find(
         (field) => field.id === respondedFieldId && !!field.value
       );
-      const noResponseField = (contact.customField || []).find(
+      const noResponseField = customFieldsArr.find(
         (field) => field.id === noResponseFieldId && !!field.value
       );
 
@@ -232,7 +239,8 @@ export default async function handler(req, res) {
     let timestampToNames = {};
     const boosterContacts = contacts
       .map((contact) => {
-        const boosterFields = (contact.customField || []).filter(
+        const customFieldsArr = getCustomFieldsArr(contact.customField);
+        const boosterFields = customFieldsArr.filter(
           (field) => field.id === boosterFieldId && !!field.value
         );
         let allTimestamps = [];
