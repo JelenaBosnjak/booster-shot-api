@@ -47,16 +47,35 @@ export default function ContactList() {
   // --- NEW: store the last optimized message for possible use elsewhere ---
   const [optimizedMessage, setOptimizedMessage] = useState('');
 
-  // Extract locationId from HighLevel custom menu URL: /v2/location/<id>/custom-menu-link/...
+  // Robustly extract location ID from path and observe for changes (SPA navigation)
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const match = window.location.pathname.match(/\/location\/([^/]+)/);
-      if (match && match[1]) {
-        setLocationId(match[1]);
-      } else {
-        setLocationId(null);
-      }
+    function extractLocationId(pathname) {
+      const match = pathname.match(/\/location\/([^/]+)/);
+      return match && match[1] ? match[1] : null;
     }
+    function updateLocationId() {
+      const id = extractLocationId(window.location.pathname);
+      setLocationId(id);
+    }
+    updateLocationId();
+
+    // Try again after a short delay in case of SPA navigation
+    const timeout = setTimeout(updateLocationId, 300);
+
+    // MutationObserver for pathname changes (client-side SPA nav)
+    let lastPath = window.location.pathname;
+    const observer = new MutationObserver(() => {
+      if (window.location.pathname !== lastPath) {
+        lastPath = window.location.pathname;
+        updateLocationId();
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => {
+      clearTimeout(timeout);
+      observer.disconnect();
+    };
   }, []);
 
   useEffect(() => {
@@ -245,7 +264,6 @@ export default function ContactList() {
     }
   };
 
-  // --- Launch Campaign Handler (updated!) ---
   const handleLaunchCampaign = async () => {
     if (selectedContacts.size === 0) {
       alert('Please select at least one contact.');
@@ -548,6 +566,9 @@ export default function ContactList() {
               <span style={{fontWeight: 600, color: COLOR_PRIMARY}}>Subaccount ID:</span>
               &nbsp;{locationId}
             </div>
+
+            {/* ...rest of your form and contacts UI remains unchanged... */}
+            {/* (copy/paste from previous code) */}
 
             <div>
               <label style={styles.label}>Booster Shot message Selection</label>
