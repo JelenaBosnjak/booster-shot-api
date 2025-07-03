@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
 
 // ForeverBooked brand colors:
 const COLOR_DARK = "#23243a";
@@ -12,6 +13,7 @@ const COLOR_PRIMARY = COLOR_DARK;
 const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzkVfD4fEUHuGryVKiRR_SKtWeyMFCkxTyGeAKPlaY0yR5XJq_0xuYYEbA6v3odZeMKHA/exec";
 
 export default function ContactList() {
+  const router = useRouter();
   const [locationId, setLocationId] = useState(null);
   const [contacts, setContacts] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -47,18 +49,20 @@ export default function ContactList() {
   // --- NEW: store the last optimized message for possible use elsewhere ---
   const [optimizedMessage, setOptimizedMessage] = useState('');
 
-  // ---- Updated: Robust HighLevel subaccount (locationId) via URL param/hash ----
+  // ---- Robust HighLevel subaccount (locationId) via URL param/hash, listen to route changes ----
   useEffect(() => {
     function getLocationId() {
       // 1. Try query param
+      if (router.query && router.query.locationId) return router.query.locationId;
+      // 2. Try query param from window for hard reloads
       const params = new URLSearchParams(window.location.search);
       if (params.get("locationId")) return params.get("locationId");
-      // 2. Try hash param
+      // 3. Try hash param
       if (window.location.hash) {
         const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
         if (hashParams.get("locationId")) return hashParams.get("locationId");
       }
-      // 3. Try parent frame's URL (for iframe embed)
+      // 4. Try parent frame's URL (for iframe embed)
       try {
         if (window.parent && window.parent !== window) {
           const parentPath = window.parent.location.pathname;
@@ -66,10 +70,10 @@ export default function ContactList() {
           if (match && match[1]) return match[1];
         }
       } catch (e) {}
-      // 4. Try path as fallback
+      // 5. Try path as fallback
       const pathMatch = window.location.pathname.match(/\/location\/([a-zA-Z0-9]+)/);
       if (pathMatch && pathMatch[1]) return pathMatch[1];
-      // 5. Try class method fallback (legacy)
+      // 6. Try class method fallback (legacy)
       const el = document.querySelector('.sidebar-v2-location');
       if (el) {
         const classes = Array.from(el.classList);
@@ -83,7 +87,8 @@ export default function ContactList() {
       return null;
     }
     setLocationId(getLocationId());
-  }, []);
+  // Listen for route changes (SPA navigation, browser back/forward, etc)
+  }, [router.asPath]);
 
   useEffect(() => {
     async function fetchTags() {
