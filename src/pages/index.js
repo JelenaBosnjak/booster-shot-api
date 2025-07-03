@@ -20,24 +20,15 @@ export default function Dashboard() {
       padding: "60px 0 0 0",
       fontFamily: "Inter, Arial, sans-serif",
     },
-    logoWrap: {
-      width: 220,
-      maxWidth: "80vw",
-      marginBottom: 30,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      background: "#fff",
-      borderRadius: 12,
-      boxShadow: "0 2px 24px rgba(35,36,58,0.09)",
-      padding: "14px 28px",
-    },
     logo: {
-      width: "100%",
-      maxWidth: 180,
+      width: 180,
       minHeight: 60,
+      marginBottom: 30,
       objectFit: "contain",
       display: "block",
+      borderRadius: 8,
+      background: "transparent",
+      boxShadow: "none",
     },
     title: {
       color: COLOR_PRIMARY,
@@ -95,14 +86,12 @@ export default function Dashboard() {
 
   return (
     <div style={styles.main}>
-      <div style={styles.logoWrap}>
-        <img
-          src="/logo.png" // Make sure new logo file is at /public/logo.png
-          alt="App Logo"
-          style={styles.logo}
-          onError={e => { e.target.src = "https://via.placeholder.com/180x80?text=Logo"; }}
-        />
-      </div>
+      <img
+        src="/logo.png" // Ensure your logo file is at /public/logo.png and has a transparent background for best results!
+        alt="App Logo"
+        style={styles.logo}
+        onError={e => { e.target.src = "https://via.placeholder.com/180x80?text=Logo"; }}
+      />
       <div style={styles.title}>Booster Shot System</div>
       <div style={styles.buttonRow}>
         <Link href="/stats" legacyBehavior>
