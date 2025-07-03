@@ -48,8 +48,11 @@ export default function ContactList() {
   const [optimizedMessage, setOptimizedMessage] = useState('');
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    setLocationId(params.get('location_id'));
+    // Automatically load locationId from URL param
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      setLocationId(params.get('location_id'));
+    }
   }, []);
 
   useEffect(() => {
@@ -364,6 +367,10 @@ export default function ContactList() {
       width: 180,
       display: 'block',
       margin: '0 auto 18px auto',
+      objectFit: 'contain',
+      background: "transparent",
+      borderRadius: 8,
+      boxShadow: "none",
     },
     title: {
       color: COLOR_PRIMARY,
@@ -520,7 +527,12 @@ export default function ContactList() {
 
   return (
     <div style={styles.main}>
-      <img src="https://foreverbooked.com/wp-content/uploads/2022/03/LogoMark-ForeverBooked-Dark.png" alt="foreverbooked logo" style={styles.logo} />
+      <img
+        src="/logo.png"
+        alt="foreverbooked logo"
+        style={styles.logo}
+        onError={e => { e.target.src = "https://via.placeholder.com/180x80?text=Logo"; }}
+      />
 
       <div style={styles.card}>
         <div style={styles.title}>Booster Shot Campaign Launcher</div>
@@ -708,7 +720,6 @@ export default function ContactList() {
                           ))
                           : ''}
                       </div>
-                      {/* No per-contact campaign name, as it's now a custom value. Remove old custom field display. */}
                     </div>
                   </div>
                 ))}
