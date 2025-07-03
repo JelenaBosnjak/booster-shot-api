@@ -57,7 +57,7 @@ export default function ContactList() {
       const id = classes.find(
         cls =>
           /^[a-zA-Z0-9]{10,}$/.test(cls) &&
-          !["sidebar-v2-location", "flex", "v2-open", "sidebar-v2-location", "sidebar-v2", "sidebar", "location"].includes(cls)
+          !["sidebar-v2-location", "flex", "v2-open", "sidebar-v2", "sidebar", "location"].includes(cls)
       );
       return id || null;
     }
