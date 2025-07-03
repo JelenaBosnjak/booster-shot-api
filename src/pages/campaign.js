@@ -47,18 +47,24 @@ export default function ContactList() {
   // --- NEW: store the last optimized message for possible use elsewhere ---
   const [optimizedMessage, setOptimizedMessage] = useState('');
 
-  // --- Robust HighLevel subaccount (locationId) detection with polling ---
+  // ---- HighLevel subaccount (locationId) detection from DOM class name ----
   useEffect(() => {
-    function extractLocationId(pathname) {
-      const match = pathname.match(/\/location\/([^/]+)/);
-      return match && match[1] ? match[1] : null;
+    function findLocationIdInClass() {
+      const el = document.querySelector('.sidebar-v2-location');
+      if (!el) return null;
+      const classes = Array.from(el.classList);
+      // Find a class that is likely the subaccount id (alphanumeric, not standard class names)
+      const id = classes.find(
+        cls =>
+          /^[a-zA-Z0-9]{10,}$/.test(cls) &&
+          !["sidebar-v2-location", "flex", "v2-open", "sidebar-v2-location", "sidebar-v2", "sidebar", "location"].includes(cls)
+      );
+      return id || null;
     }
-    let found = false;
-    let interval = setInterval(() => {
-      const id = extractLocationId(window.location.pathname);
+    const interval = setInterval(() => {
+      const id = findLocationIdInClass();
       if (id) {
         setLocationId(id);
-        found = true;
         clearInterval(interval);
       }
     }, 150);
