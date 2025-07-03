@@ -47,28 +47,42 @@ export default function ContactList() {
   // --- NEW: store the last optimized message for possible use elsewhere ---
   const [optimizedMessage, setOptimizedMessage] = useState('');
 
-  // ---- HighLevel subaccount (locationId) detection from DOM class name ----
+  // ---- Updated: Robust HighLevel subaccount (locationId) via URL param/hash ----
   useEffect(() => {
-    function findLocationIdInClass() {
-      const el = document.querySelector('.sidebar-v2-location');
-      if (!el) return null;
-      const classes = Array.from(el.classList);
-      // Find a class that is likely the subaccount id (alphanumeric, not standard class names)
-      const id = classes.find(
-        cls =>
-          /^[a-zA-Z0-9]{10,}$/.test(cls) &&
-          !["sidebar-v2-location", "flex", "v2-open", "sidebar-v2", "sidebar", "location"].includes(cls)
-      );
-      return id || null;
-    }
-    const interval = setInterval(() => {
-      const id = findLocationIdInClass();
-      if (id) {
-        setLocationId(id);
-        clearInterval(interval);
+    function getLocationId() {
+      // 1. Try query param
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("locationId")) return params.get("locationId");
+      // 2. Try hash param
+      if (window.location.hash) {
+        const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+        if (hashParams.get("locationId")) return hashParams.get("locationId");
       }
-    }, 150);
-    return () => clearInterval(interval);
+      // 3. Try parent frame's URL (for iframe embed)
+      try {
+        if (window.parent && window.parent !== window) {
+          const parentPath = window.parent.location.pathname;
+          const match = parentPath.match(/\/location\/([a-zA-Z0-9]+)/);
+          if (match && match[1]) return match[1];
+        }
+      } catch (e) {}
+      // 4. Try path as fallback
+      const pathMatch = window.location.pathname.match(/\/location\/([a-zA-Z0-9]+)/);
+      if (pathMatch && pathMatch[1]) return pathMatch[1];
+      // 5. Try class method fallback (legacy)
+      const el = document.querySelector('.sidebar-v2-location');
+      if (el) {
+        const classes = Array.from(el.classList);
+        const id = classes.find(
+          cls =>
+            /^[a-zA-Z0-9]{10,}$/.test(cls) &&
+            !["sidebar-v2-location", "flex", "v2-open", "sidebar-v2", "sidebar", "location"].includes(cls)
+        );
+        if (id) return id;
+      }
+      return null;
+    }
+    setLocationId(getLocationId());
   }, []);
 
   useEffect(() => {

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const COLOR_DARK = "#23243a";
 const COLOR_CORAL = "#ff8e87";
@@ -9,6 +9,33 @@ const COLOR_PRIMARY = COLOR_DARK;
 
 export default function Dashboard() {
   const [active, setActive] = useState("");
+  const [locationId, setLocationId] = useState(null);
+
+  useEffect(() => {
+    function getLocationId() {
+      // 1. Try URL param
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("locationId")) return params.get("locationId");
+      // 2. Try hash
+      if (window.location.hash) {
+        const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+        if (hashParams.get("locationId")) return hashParams.get("locationId");
+      }
+      // 3. Try parent frame (for embedded iframe)
+      try {
+        if (window.parent && window.parent !== window) {
+          const parentPath = window.parent.location.pathname;
+          const match = parentPath.match(/\/location\/([a-zA-Z0-9]+)/);
+          if (match && match[1]) return match[1];
+        }
+      } catch (e) {}
+      // 4. Try path
+      const pathMatch = window.location.pathname.match(/\/location\/([a-zA-Z0-9]+)/);
+      if (pathMatch && pathMatch[1]) return pathMatch[1];
+      return null;
+    }
+    setLocationId(getLocationId());
+  }, []);
 
   const styles = {
     main: {
@@ -78,16 +105,20 @@ export default function Dashboard() {
     },
   };
 
-  // You'll need this logic to add hover/active effects with inline styles
   const getButtonStyle = (btn) => ({
     ...styles.button,
     ...(active === btn && styles.buttonActive),
   });
 
+  // Build the campaign link with locationId as a param if available
+  const campaignLink = locationId
+    ? `/campaign?locationId=${encodeURIComponent(locationId)}`
+    : "/campaign";
+
   return (
     <div style={styles.main}>
       <img
-        src="/logo.png" // Ensure your logo file is at /public/logo.png and has a transparent background for best results!
+        src="/logo.png"
         alt="App Logo"
         style={styles.logo}
         onError={e => { e.target.src = "https://via.placeholder.com/180x80?text=Logo"; }}
@@ -105,7 +136,7 @@ export default function Dashboard() {
             Campaign Status
           </a>
         </Link>
-        <Link href="/campaign" legacyBehavior>
+        <Link href={campaignLink} legacyBehavior>
           <a
             style={getButtonStyle("launch")}
             onMouseEnter={() => setActive("launch")}
