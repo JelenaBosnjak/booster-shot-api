@@ -47,11 +47,15 @@ export default function ContactList() {
   // --- NEW: store the last optimized message for possible use elsewhere ---
   const [optimizedMessage, setOptimizedMessage] = useState('');
 
+  // Extract locationId from HighLevel custom menu URL: /v2/location/<id>/custom-menu-link/...
   useEffect(() => {
-    // Automatically load locationId from URL param
     if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      setLocationId(params.get('location_id'));
+      const match = window.location.pathname.match(/\/location\/([^/]+)/);
+      if (match && match[1]) {
+        setLocationId(match[1]);
+      } else {
+        setLocationId(null);
+      }
     }
   }, []);
 
@@ -265,7 +269,7 @@ export default function ContactList() {
           contactIds: Array.from(selectedContacts),
           tag: 'booster shot',
           boosterShotMessage: smsMessage,
-          boosterCampaignName: campaign, // <-- this is the dropdown value, to backend
+          boosterCampaignName: campaign,
           locationId
         })
       });
@@ -751,7 +755,7 @@ export default function ContactList() {
             )}
           </>
         ) : (
-          <p>Please provide a location_id URL parameter.</p>
+          <p>Could not detect subaccount ID from URL. Are you opening from the correct menu link?</p>
         )}
       </div>
     </div>
