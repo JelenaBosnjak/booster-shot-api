@@ -4,6 +4,8 @@ import { useRouter } from 'next/router';
 // ForeverBooked brand colors:
 const COLOR_DARK = "#23243a";
 const COLOR_CORAL = "#ff8e87";
+const COLOR_CORAL_LIGHT = "#ffe9e7";
+const COLOR_CORAL_LIGHTER = "#fff2f1";
 const COLOR_LIGHT_BG = "#fafbfc";
 const COLOR_GRAY = "#e5e7eb";
 const COLOR_WHITE = "#fff";
@@ -29,7 +31,7 @@ function Modal({ open, onClose, children }) {
           background: COLOR_WHITE,
           borderRadius: 16,
           boxShadow: "0 4px 24px rgba(35,36,58,0.13)",
-          maxWidth: 620,
+          maxWidth: 850,
           width: "98vw",
           padding: 32,
           position: "relative"
@@ -224,7 +226,8 @@ export default function ContactList() {
           }
         }
 
-        setSelectedContacts(new Set());
+        // keep selectedContacts from previous pages!
+        // do not reset here, so user can select across pages
       } else {
         alert('API error: ' + (data.error?.message || 'Unknown error'));
       }
@@ -269,20 +272,38 @@ export default function ContactList() {
     return filtered;
   };
 
-  // Select all/none
+  // Select all/none (for current page)
   const toggleSelectAll = () => {
     const filtered = filteredContacts();
-    if (selectedContacts.size < filtered.length) {
-      setSelectedContacts(new Set(filtered.map((c) => c.id)));
+    const idsOnPage = filtered.map(c => c.id);
+    const newSet = new Set(selectedContacts);
+    const allSelected = idsOnPage.every(id => newSet.has(id));
+    if (!allSelected) {
+      idsOnPage.forEach(id => newSet.add(id));
     } else {
-      setSelectedContacts(new Set());
+      idsOnPage.forEach(id => newSet.delete(id));
     }
+    setSelectedContacts(newSet);
   };
 
   const toggleSelectContact = (id) => {
     const newSet = new Set(selectedContacts);
     newSet.has(id) ? newSet.delete(id) : newSet.add(id);
     setSelectedContacts(newSet);
+  };
+
+  // Pagination in modal
+  const handleNextPage = () => {
+    if (nextPageUrl) {
+      loadPage(nextPageUrl, currentPage + 1);
+    }
+  };
+  const handlePreviousPage = () => {
+    if (currentPage > 1 && prevPages[currentPage - 2]) {
+      const prevUrl = prevPages[currentPage - 2];
+      loadPage(prevUrl, currentPage - 1);
+      setPrevPages((prev) => prev.slice(0, currentPage - 2));
+    }
   };
 
   // AI
@@ -419,7 +440,9 @@ export default function ContactList() {
   // Modal - Contact selection UI
   const contactModalUI = (
     <div>
-      <h2 style={{marginTop: 0, marginBottom: 20, color: COLOR_PRIMARY, fontWeight: 800}}>Select Campaign Contacts</h2>
+      <h2 style={{marginTop: 0, marginBottom: 20, color: COLOR_PRIMARY, fontWeight: 800}}>
+        Before launching Select Campaign Contacts
+      </h2>
       <div style={{display: "flex", gap: 14, marginBottom: 16}}>
         <select
           value={selectedTag}
@@ -461,7 +484,7 @@ export default function ContactList() {
         {filteredContacts().map((contact) => (
           <div key={contact.id} style={{
             display: 'flex', alignItems: 'center', padding: "8px 2px", borderBottom: `1px solid ${COLOR_GRAY}`,
-            background: selectedContacts.has(contact.id) ? "#ffe9e7" : "inherit"
+            background: selectedContacts.has(contact.id) ? COLOR_CORAL_LIGHT : "inherit"
           }}>
             <input
               type="checkbox"
@@ -482,7 +505,7 @@ export default function ContactList() {
                   ? contact.tags.map(tag => (
                     <span key={tag} style={{
                       display: 'inline-block', fontSize: 13, color: COLOR_CORAL,
-                      background: '#fff2f1', borderRadius: 4, padding: '2px 8px', marginRight: 6
+                      background: COLOR_CORAL_LIGHTER, borderRadius: 4, padding: '2px 8px', marginRight: 6
                     }}>{tag}</span>
                   ))
                   : ''}
@@ -496,9 +519,34 @@ export default function ContactList() {
           background: COLOR_PRIMARY, color: COLOR_WHITE, border: "none",
           borderRadius: 6, padding: "7px 19px", fontWeight: 700, cursor: "pointer"
         }} onClick={toggleSelectAll}>
-          {selectedContacts.size < filteredContacts().length ? 'Select All' : 'Unselect All'}
+          {filteredContacts().length > 0 && filteredContacts().every(c => selectedContacts.has(c.id))
+            ? 'Unselect All' : 'Select All'}
         </button>
         <span style={{fontWeight: 600, color: COLOR_PRIMARY, fontSize: 15}}>Selected: {selectedContacts.size}</span>
+      </div>
+      {/* Pagination */}
+      <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16}}>
+        <button
+          style={{
+            background: "#efefef", color: "#444", border: "none", borderRadius: 6,
+            padding: "8px 24px", fontWeight: 700, cursor: currentPage === 1 ? "not-allowed" : "pointer"
+          }}
+          onClick={handlePreviousPage}
+          disabled={currentPage === 1}
+        >Previous</button>
+        <span style={{fontSize: 15, color: "#888"}}>
+          Page {currentPage} of {Math.max(1, Math.ceil(totalCount / limit))}
+        </span>
+        <button
+          style={{
+            background: nextPageUrl ? COLOR_CORAL : "#efefef",
+            color: nextPageUrl ? COLOR_WHITE : "#888",
+            border: "none", borderRadius: 6,
+            padding: "8px 24px", fontWeight: 700, cursor: nextPageUrl ? "pointer" : "not-allowed"
+          }}
+          onClick={handleNextPage}
+          disabled={!nextPageUrl}
+        >Next</button>
       </div>
       <div style={{display: "flex", justifyContent: "flex-end", gap: 10}}>
         <button
@@ -553,8 +601,8 @@ export default function ContactList() {
         background: COLOR_WHITE,
         borderRadius: 18,
         boxShadow: '0 4px 16px rgba(35,36,58,0.07)',
-        padding: '36px 38px',
-        maxWidth: 650,
+        padding: '44px 56px',
+        maxWidth: 880,
         margin: '0 auto 40px auto',
         border: `1.5px solid ${COLOR_GRAY}`,
       }}>
@@ -563,22 +611,16 @@ export default function ContactList() {
             <span style={{fontWeight: 900, fontSize: "2.1rem", color: COLOR_PRIMARY}}>SMS Campaign</span>
             <div style={{fontSize: 15, color: "#888", marginTop: 2}}>Professional Campaign Management</div>
           </div>
-          <span style={{
-            fontWeight: 700, color: COLOR_CORAL, background: "#fff2f1",
-            borderRadius: 6, padding: "7px 15px", fontSize: 14
-          }}>
-            {locationId ? `Subaccount: ${locationId}` : ""}
-          </span>
         </div>
-        <hr style={{margin: "18px 0"}} />
+        <hr style={{margin: "28px 0"}} />
 
         {locationId ? (
           <>
             {/* Campaign config */}
-            <div style={{display: "flex", gap: 16, marginBottom: 18}}>
+            <div style={{display: "flex", gap: 26, marginBottom: 30}}>
               <div style={{flex: 1}}>
                 <label style={{
-                  fontWeight: 600, color: COLOR_PRIMARY, marginBottom: 7, display: 'block', fontSize: 15
+                  fontWeight: 600, color: COLOR_PRIMARY, marginBottom: 12, display: 'block', fontSize: 15
                 }}>Campaign Category</label>
                 <select
                   value={boosterShotMessage}
@@ -587,8 +629,8 @@ export default function ContactList() {
                     width: "100%",
                     borderRadius: 8,
                     border: `1.8px solid ${COLOR_GRAY}`,
-                    padding: 10,
-                    fontSize: 15
+                    padding: 13,
+                    fontSize: 16,
                   }}
                 >
                   <option value="">-- Select Booster Shot --</option>
@@ -599,7 +641,7 @@ export default function ContactList() {
               </div>
               <div style={{flex: 1}}>
                 <label style={{
-                  fontWeight: 600, color: COLOR_PRIMARY, marginBottom: 7, display: 'block', fontSize: 15
+                  fontWeight: 600, color: COLOR_PRIMARY, marginBottom: 12, display: 'block', fontSize: 15
                 }}>Campaign Template</label>
                 <select
                   value={campaign}
@@ -608,8 +650,8 @@ export default function ContactList() {
                     width: "100%",
                     borderRadius: 8,
                     border: `1.8px solid ${COLOR_GRAY}`,
-                    padding: 10,
-                    fontSize: 15
+                    padding: 13,
+                    fontSize: 16,
                   }}
                   disabled={!boosterShotMessage}
                 >
@@ -620,9 +662,9 @@ export default function ContactList() {
                 </select>
               </div>
             </div>
-            <div style={{marginBottom: 18}}>
+            <div style={{marginBottom: 30}}>
               <label style={{
-                fontWeight: 600, color: COLOR_PRIMARY, marginBottom: 4, display: 'block', fontSize: 15
+                fontWeight: 600, color: COLOR_PRIMARY, marginBottom: 10, display: 'block', fontSize: 15
               }}>SMS Message</label>
               <textarea
                 placeholder="Type your SMS/Text here..."
@@ -632,13 +674,13 @@ export default function ContactList() {
                   width: "100%",
                   minHeight: '86px',
                   borderRadius: '8px',
-                  padding: '10px',
+                  padding: '13px',
                   border: `1.7px solid ${COLOR_GRAY}`,
-                  fontSize: '1rem',
+                  fontSize: '1.09rem',
                   background: COLOR_LIGHT_BG,
                   color: COLOR_DARK,
                   marginTop: '4px',
-                  marginBottom: '8px',
+                  marginBottom: '13px',
                   outline: 'none',
                   transition: 'border-color 0.2s',
                   resize: "vertical"
@@ -654,20 +696,30 @@ export default function ContactList() {
                   style={{
                     padding: "7px 18px",
                     borderRadius: 7,
-                    background: optimizing || !smsMessage ? "#f2b4b1" : COLOR_CORAL,
-                    color: COLOR_WHITE,
+                    background: optimizing || !smsMessage ? "#fad6d3" : "#ffd2cc",
+                    color: COLOR_CORAL,
                     fontWeight: 700,
-                    border: 'none',
-                    cursor: optimizing || !smsMessage ? "not-allowed" : "pointer"
+                    border: `1.5px solid ${COLOR_CORAL}`,
+                    cursor: optimizing || !smsMessage ? "not-allowed" : "pointer",
+                    display: "flex", alignItems: "center", gap: 6
                   }}
                 >
-                  {optimizing ? 'Optimizing...' : '🤖 Optimize with AI'}
+                  <span style={{
+                    color: "#ffb347",
+                    fontWeight: 700,
+                    fontSize: 18,
+                    marginRight: 2
+                  }}>★</span>
+                  <span>{optimizing ? 'Optimizing...' : 'Optimize with AI'}</span>
                 </button>
               </div>
             </div>
 
             {/* Test */}
-            <div style={{display: "flex", alignItems: "center", gap: 13, marginBottom: 20}}>
+            <div style={{
+              display: "flex", alignItems: "center", gap: 13,
+              marginBottom: 32
+            }}>
               <input
                 type="text"
                 placeholder="Enter test phone number"
@@ -691,10 +743,10 @@ export default function ContactList() {
                 style={{
                   padding: "8px 22px",
                   borderRadius: 7,
-                  background: sendingTest || !smsMessage || !testPhone ? "#bbb" : COLOR_PRIMARY,
-                  color: COLOR_WHITE,
+                  background: COLOR_WHITE,
+                  color: COLOR_DARK,
                   fontWeight: 700,
-                  border: "none",
+                  border: "1.5px solid #bbb",
                   cursor: sendingTest || !smsMessage || !testPhone ? "not-allowed" : "pointer"
                 }}
               >
@@ -703,26 +755,35 @@ export default function ContactList() {
             </div>
 
             {/* Contacts selection */}
-            <div style={{marginBottom: 24}}>
+            <div style={{marginBottom: 16}}>
               <label style={{
-                fontWeight: 600, color: COLOR_PRIMARY, marginBottom: 4, display: 'block', fontSize: 15
-              }}>Select Campaign Contacts</label>
+                fontWeight: 600, color: COLOR_PRIMARY, marginBottom: 7, display: 'block', fontSize: 15
+              }}>Before launching Select Campaign Contacts</label>
               <button
                 onClick={openContactsModal}
                 style={{
                   padding: "11px 18px",
                   borderRadius: 8,
-                  background: "#fff2f1",
+                  background: "#ffd2cc",
                   color: COLOR_CORAL,
                   fontWeight: 700,
                   fontSize: 16,
-                  border: `1.7px solid ${COLOR_CORAL}`,
-                  cursor: "pointer"
+                  border: `1.5px solid ${COLOR_CORAL}`,
+                  cursor: "pointer",
+                  display: "flex", alignItems: "center", gap: 8
                 }}
               >
-                {selectedContacts.size === 0
-                  ? "Select Contacts..."
-                  : `Selected: ${selectedContacts.size} contact${selectedContacts.size > 1 ? "s" : ""}`}
+                <span style={{
+                  color: "#ffb347",
+                  fontWeight: 700,
+                  fontSize: 18,
+                  marginRight: 2
+                }}>★</span>
+                <span>
+                  {selectedContacts.size === 0
+                    ? "Select Contacts..."
+                    : `Selected: ${selectedContacts.size} contact${selectedContacts.size > 1 ? "s" : ""}`}
+                </span>
               </button>
             </div>
             <Modal open={contactsModal} onClose={() => setContactsModal(false)}>
