@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 
 // ForeverBooked brand colors:
 const COLOR_DARK = "#23243a";
-const COLOR_CORAL = "#ff8e87";
+const COLOR_CORAL = "rgb(247 133 127)";
 const COLOR_CORAL_LIGHT = "#ffe9e7";
 const COLOR_CORAL_LIGHTER = "#fff2f1";
 const COLOR_LIGHT_BG = "#fafbfc";
@@ -611,6 +611,25 @@ export default function ContactList() {
             <span style={{fontWeight: 900, fontSize: "2.1rem", color: COLOR_PRIMARY}}>SMS Campaign</span>
             <div style={{fontSize: 15, color: "#888", marginTop: 2}}>Professional Campaign Management</div>
           </div>
+          <a
+            href="/status"
+            style={{
+              marginLeft: 24,
+              background: "#333",
+              color: "#fff",
+              padding: "11px 28px",
+              borderRadius: 9,
+              fontWeight: 800,
+              fontSize: 17,
+              letterSpacing: 0.2,
+              border: "none",
+              textDecoration: "none",
+              boxShadow: "0 2px 6px rgba(44,44,55,0.08)",
+              transition: "background 0.16s"
+            }}
+          >
+            See Status
+          </a>
         </div>
         <hr style={{margin: "28px 0"}} />
 
@@ -694,23 +713,20 @@ export default function ContactList() {
                   onClick={handleOptimizeAI}
                   disabled={optimizing || !smsMessage}
                   style={{
-                    padding: "7px 18px",
-                    borderRadius: 7,
-                    background: optimizing || !smsMessage ? "#fad6d3" : "#ffd2cc",
-                    color: COLOR_CORAL,
-                    fontWeight: 700,
-                    border: `1.5px solid ${COLOR_CORAL}`,
+                    padding: "7px 20px",
+                    borderRadius: 8,
+                    background: optimizing || !smsMessage ? "rgba(247,133,127,0.37)" : "rgba(247,133,127,0.89)",
+                    color: "#fff",
+                    fontWeight: 800,
+                    fontSize: 16,
+                    border: "none",
                     cursor: optimizing || !smsMessage ? "not-allowed" : "pointer",
-                    display: "flex", alignItems: "center", gap: 6
+                    outline: "none",
+                    boxShadow: "0 2px 6px rgba(44,44,55,0.08)",
+                    transition: "background 0.16s"
                   }}
                 >
-                  <span style={{
-                    color: "#ffb347",
-                    fontWeight: 700,
-                    fontSize: 18,
-                    marginRight: 2
-                  }}>★</span>
-                  <span>{optimizing ? 'Optimizing...' : 'Optimize with AI'}</span>
+                  {optimizing ? 'Optimizing...' : 'Optimize with AI'}
                 </button>
               </div>
             </div>
@@ -742,7 +758,7 @@ export default function ContactList() {
                 disabled={sendingTest || !smsMessage || !testPhone}
                 style={{
                   padding: "8px 22px",
-                  borderRadius: 7,
+                  borderRadius: 8,
                   background: COLOR_WHITE,
                   color: COLOR_DARK,
                   fontWeight: 700,
@@ -762,28 +778,23 @@ export default function ContactList() {
               <button
                 onClick={openContactsModal}
                 style={{
-                  padding: "11px 18px",
+                  padding: "13px 20px",
                   borderRadius: 8,
-                  background: "#ffd2cc",
-                  color: COLOR_CORAL,
-                  fontWeight: 700,
-                  fontSize: 16,
-                  border: `1.5px solid ${COLOR_CORAL}`,
+                  background: "rgba(247,133,127,1)",
+                  color: "#fff",
+                  fontWeight: 900,
+                  fontSize: 18,
+                  border: "none",
                   cursor: "pointer",
-                  display: "flex", alignItems: "center", gap: 8
+                  boxShadow: "0 2px 6px rgba(44,44,55,0.08)",
+                  outline: "none",
+                  letterSpacing: 0.2,
+                  transition: "background 0.16s"
                 }}
               >
-                <span style={{
-                  color: "#ffb347",
-                  fontWeight: 700,
-                  fontSize: 18,
-                  marginRight: 2
-                }}>★</span>
-                <span>
-                  {selectedContacts.size === 0
-                    ? "Select Contacts..."
-                    : `Selected: ${selectedContacts.size} contact${selectedContacts.size > 1 ? "s" : ""}`}
-                </span>
+                {selectedContacts.size === 0
+                  ? "Select Contacts..."
+                  : `Selected: ${selectedContacts.size} contact${selectedContacts.size > 1 ? "s" : ""}`}
               </button>
             </div>
             <Modal open={contactsModal} onClose={() => setContactsModal(false)}>
