@@ -13,60 +13,101 @@ const COLOR_PRIMARY = COLOR_DARK;
 const WEB_APP_URL =
   "https://script.google.com/macros/s/AKfycbzkVfD4fEUHuGryVKiRR_SKtWeyMFCkxTyGeAKPlaY0yR5XJq_0xuYYEbA6v3odZeMKHA/exec";
 
+// Simple Modal implementation (no library needed)
+function Modal({ open, onClose, children }) {
+  if (!open) return null;
+  return (
+    <div style={{
+      position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh",
+      background: "rgba(34,34,44,0.28)", zIndex: 1000,
+      display: "flex", alignItems: "center", justifyContent: "center"
+    }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: COLOR_WHITE,
+          borderRadius: 16,
+          boxShadow: "0 4px 24px rgba(35,36,58,0.13)",
+          maxWidth: 620,
+          width: "98vw",
+          padding: 32,
+          position: "relative"
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          style={{
+            position: "absolute",
+            right: 14,
+            top: 14,
+            background: "none",
+            border: "none",
+            fontSize: 26,
+            color: "#bbb",
+            cursor: "pointer"
+          }}
+          aria-label="Close"
+        >
+          ×
+        </button>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export default function ContactList() {
   const router = useRouter();
   const [locationId, setLocationId] = useState(null);
-  const [contacts, setContacts] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [selectedContacts, setSelectedContacts] = useState(new Set());
-  const [limit, setLimit] = useState(20);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
-  const [nextPageUrl, setNextPageUrl] = useState(null);
-  const [prevPages, setPrevPages] = useState([]);
-  const [contactsLoaded, setContactsLoaded] = useState(false);
-  const [debugInfo, setDebugInfo] = useState({});
-  const [campaignLoading, setCampaignLoading] = useState(false);
-  const [rateLimitError, setRateLimitError] = useState(null);
 
-  // --- Booster shot/campaign/message selection from Google Sheet ---
+  // Campaign config
   const [boosterShotMessage, setBoosterShotMessage] = useState('');
   const [campaign, setCampaign] = useState('');
   const [smsMessage, setSmsMessage] = useState('');
   const [offers, setOffers] = useState([]);
   const [offerCategories, setOfferCategories] = useState([]);
   const [campaignNames, setCampaignNames] = useState([]);
-
-  // --- Search and Tag Filter ---
-  const [searchTerm, setSearchTerm] = useState('');
-  const [tags, setTags] = useState([]);
-  const [selectedTag, setSelectedTag] = useState('');
-
-  // --- AI Optimization/Test Message additions ---
-  const [optimizing, setOptimizing] = useState(false);
-  const [testPhone, setTestPhone] = useState('');
-  const [sendingTest, setSendingTest] = useState(false);
-
-  // --- NEW: store the last optimized message for possible use elsewhere ---
   const [optimizedMessage, setOptimizedMessage] = useState('');
 
-  // ---- Robust HighLevel subaccount (locationId) via URL param/hash, localStorage fallback, listen to route changes ----
+  // Test
+  const [testPhone, setTestPhone] = useState('');
+  const [sendingTest, setSendingTest] = useState(false);
+  const [optimizing, setOptimizing] = useState(false);
+
+  // Contact selection
+  const [contacts, setContacts] = useState([]);
+  const [tags, setTags] = useState([]);
+  const [selectedTag, setSelectedTag] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedContacts, setSelectedContacts] = useState(new Set());
+  const [contactsLoaded, setContactsLoaded] = useState(false);
+  const [loadingContacts, setLoadingContacts] = useState(false);
+  const [limit, setLimit] = useState(20);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [nextPageUrl, setNextPageUrl] = useState(null);
+  const [prevPages, setPrevPages] = useState([]);
+  const [rateLimitError, setRateLimitError] = useState(null);
+  const [campaignLoading, setCampaignLoading] = useState(false);
+  const [contactsModal, setContactsModal] = useState(false);
+
+  // Debug
+  const [debugInfo, setDebugInfo] = useState({});
+
+  // ---- locationId detection (robust + localStorage fallback) ----
   useEffect(() => {
     function getLocationId() {
-      // 1. Try query param (Next.js router way)
       if (router.query && router.query.locationId) return router.query.locationId;
-      // 2. Try query param from window for hard reloads
       const params = new URLSearchParams(window.location.search);
       if (params.get("locationId")) return params.get("locationId");
-      // 3. Try hash param
       if (window.location.hash) {
         const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
         if (hashParams.get("locationId")) return hashParams.get("locationId");
       }
-      // 4. Try localStorage fallback
       if (typeof window !== "undefined" && localStorage.getItem("locationId"))
         return localStorage.getItem("locationId");
-      // 5. Try parent frame's URL (for iframe embed)
       try {
         if (window.parent && window.parent !== window) {
           const parentPath = window.parent.location.pathname;
@@ -74,10 +115,8 @@ export default function ContactList() {
           if (match && match[1]) return match[1];
         }
       } catch (e) {}
-      // 6. Try path as fallback
       const pathMatch = window.location.pathname.match(/\/location\/([a-zA-Z0-9]+)/);
       if (pathMatch && pathMatch[1]) return pathMatch[1];
-      // 7. Try class method fallback (legacy)
       const el = document.querySelector('.sidebar-v2-location');
       if (el) {
         const classes = Array.from(el.classList);
@@ -90,17 +129,16 @@ export default function ContactList() {
       }
       return null;
     }
-
     const id = getLocationId();
     if (id) {
       setLocationId(id);
-      // Store it for future SPA navigation (browser back, etc)
       if (typeof window !== "undefined") {
         localStorage.setItem("locationId", id);
       }
     }
   }, [router.asPath]);
 
+  // Tags
   useEffect(() => {
     async function fetchTags() {
       if (!locationId) return;
@@ -116,6 +154,7 @@ export default function ContactList() {
     fetchTags();
   }, [locationId]);
 
+  // Offers
   useEffect(() => {
     fetch(WEB_APP_URL)
       .then(res => res.json())
@@ -129,6 +168,7 @@ export default function ContactList() {
       });
   }, []);
 
+  // Campaign names per category
   useEffect(() => {
     if (!boosterShotMessage) {
       setCampaignNames([]);
@@ -142,6 +182,7 @@ export default function ContactList() {
     setSmsMessage('');
   }, [boosterShotMessage, offers]);
 
+  // SMS message preview per campaign
   useEffect(() => {
     if (!campaign) {
       setSmsMessage('');
@@ -151,8 +192,9 @@ export default function ContactList() {
     setSmsMessage(offer?.Text_Preview || '');
   }, [campaign, boosterShotMessage, offers]);
 
+  // Contact loading
   const loadPage = async (url, pageNumber, resetHistory = false) => {
-    setLoading(true);
+    setLoadingContacts(true);
     setRateLimitError(null);
     try {
       const res = await fetch(url);
@@ -190,24 +232,44 @@ export default function ContactList() {
       console.error('Fetch Error:', error);
       alert('Network error occurred');
     } finally {
-      setLoading(false);
+      setLoadingContacts(false);
     }
   };
 
-  const handleNextPage = () => {
-    if (nextPageUrl) {
-      loadPage(nextPageUrl, currentPage + 1);
+  const handleLoadContacts = () => {
+    if (locationId) {
+      const initialUrl = `/api/get-contacts?locationId=${locationId}&limit=${limit}`;
+      loadPage(initialUrl, 1, true);
     }
   };
 
-  const handlePreviousPage = () => {
-    if (currentPage > 1 && prevPages[currentPage - 2]) {
-      const prevUrl = prevPages[currentPage - 2];
-      loadPage(prevUrl, currentPage - 1);
-      setPrevPages((prev) => prev.slice(0, currentPage - 2));
-    }
+  // Modal open - load contacts if not loaded
+  const openContactsModal = () => {
+    setContactsModal(true);
+    if (!contactsLoaded && !loadingContacts) handleLoadContacts();
   };
 
+  // Filter contacts
+  const filteredContacts = () => {
+    let filtered = contacts;
+    if (selectedTag) {
+      filtered = filtered.filter(contact =>
+        Array.isArray(contact.tags) && contact.tags.includes(selectedTag)
+      );
+    }
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(contact =>
+        (contact.firstName && contact.firstName.toLowerCase().includes(term)) ||
+        (contact.lastName && contact.lastName.toLowerCase().includes(term)) ||
+        (contact.email && contact.email.toLowerCase().includes(term)) ||
+        (contact.phone && contact.phone.toLowerCase().includes(term))
+      );
+    }
+    return filtered;
+  };
+
+  // Select all/none
   const toggleSelectAll = () => {
     const filtered = filteredContacts();
     if (selectedContacts.size < filtered.length) {
@@ -223,13 +285,7 @@ export default function ContactList() {
     setSelectedContacts(newSet);
   };
 
-  const handleLoadContacts = () => {
-    if (locationId) {
-      const initialUrl = `/api/get-contacts?locationId=${locationId}&limit=${limit}`;
-      loadPage(initialUrl, 1, true);
-    }
-  };
-
+  // AI
   const handleOptimizeAI = async () => {
     if (!smsMessage) {
       alert("Please enter a message to optimize.");
@@ -257,6 +313,7 @@ export default function ContactList() {
     }
   };
 
+  // Test
   const handleSendTest = async () => {
     if (!testPhone) {
       alert("Enter a phone number.");
@@ -286,12 +343,12 @@ export default function ContactList() {
     }
   };
 
+  // Launch
   const handleLaunchCampaign = async () => {
     if (selectedContacts.size === 0) {
       alert('Please select at least one contact.');
       return;
     }
-
     setCampaignLoading(true);
     setRateLimitError(null);
     try {
@@ -343,11 +400,9 @@ export default function ContactList() {
         alert(`Warning: Booster Campaign Name update failed: ${result.boosterCampaignNameCustomValueResult.error}`);
       }
 
-      if (locationId) {
-        const currentUrl = prevPages[currentPage - 1] ||
-          `/api/get-contacts?locationId=${locationId}&limit=${limit}`;
-        loadPage(currentUrl, currentPage);
-      }
+      setContactsModal(false);
+      setContactsLoaded(false);
+      setSelectedContacts(new Set());
 
     } catch (err) {
       console.error(err);
@@ -357,445 +412,327 @@ export default function ContactList() {
     }
   };
 
-  const filteredContacts = () => {
-    let filtered = contacts;
-    if (selectedTag) {
-      filtered = filtered.filter(contact =>
-        Array.isArray(contact.tags) && contact.tags.includes(selectedTag)
-      );
-    }
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(contact =>
-        (contact.firstName && contact.firstName.toLowerCase().includes(term)) ||
-        (contact.lastName && contact.lastName.toLowerCase().includes(term)) ||
-        (contact.email && contact.email.toLowerCase().includes(term)) ||
-        (contact.phone && contact.phone.toLowerCase().includes(term))
-      );
-    }
-    return filtered;
-  };
+  // Character count
+  const getCharCount = () => smsMessage.length;
+  const getSMSCount = () => Math.ceil(smsMessage.length / 160);
 
-  const getResetTimeString = () => {
-    if (rateLimitError?.resetTime) {
-      const seconds = Number(rateLimitError.resetTime);
-      if (!isNaN(seconds)) {
-        const now = Date.now();
-        const resetDate = new Date(now + seconds * 1000);
-        const mins = Math.floor(seconds / 60);
-        return `${mins} minute(s), at ${resetDate.toLocaleTimeString()}`;
-      }
-    }
-    return null;
-  };
+  // Modal - Contact selection UI
+  const contactModalUI = (
+    <div>
+      <h2 style={{marginTop: 0, marginBottom: 20, color: COLOR_PRIMARY, fontWeight: 800}}>Select Campaign Contacts</h2>
+      <div style={{display: "flex", gap: 14, marginBottom: 16}}>
+        <select
+          value={selectedTag}
+          onChange={e => setSelectedTag(e.target.value)}
+          style={{
+            width: 200,
+            borderRadius: 8,
+            border: `1.5px solid ${COLOR_GRAY}`,
+            padding: 8,
+            fontSize: 15
+          }}
+        >
+          <option value="">All Tags</option>
+          {tags.map(tag => (
+            <option key={tag} value={tag}>{tag}</option>
+          ))}
+        </select>
+        <input
+          type="text"
+          placeholder="Search contacts by name, email, or phone..."
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          style={{
+            flex: 1,
+            borderRadius: 8,
+            border: `1.5px solid ${COLOR_GRAY}`,
+            padding: 8,
+            fontSize: 15
+          }}
+        />
+      </div>
+      <div style={{
+        maxHeight: 350, overflowY: "auto", border: `1.3px solid ${COLOR_GRAY}`,
+        borderRadius: 8, padding: 6, background: "#f6f6fa", marginBottom: 10
+      }}>
+        {loadingContacts && <div style={{padding: 18, textAlign: "center"}}>Loading contacts...</div>}
+        {!loadingContacts && filteredContacts().length === 0 &&
+          <div style={{padding: 18, textAlign: "center", color: "#999"}}>No contacts found.</div>}
+        {filteredContacts().map((contact) => (
+          <div key={contact.id} style={{
+            display: 'flex', alignItems: 'center', padding: "8px 2px", borderBottom: `1px solid ${COLOR_GRAY}`,
+            background: selectedContacts.has(contact.id) ? "#ffe9e7" : "inherit"
+          }}>
+            <input
+              type="checkbox"
+              checked={selectedContacts.has(contact.id)}
+              onChange={() => toggleSelectContact(contact.id)}
+              style={{
+                accentColor: COLOR_CORAL, marginRight: 12, width: 20, height: 20, cursor: "pointer"
+              }}
+            />
+            <div>
+              <div style={{fontWeight: 700, fontSize: 15}}>
+                {contact.firstName || ''} {contact.lastName || ''}
+              </div>
+              <div style={{color: '#8b8b99', fontSize: 13}}>{contact.email || ''}</div>
+              <div style={{color: '#8b8b99', fontSize: 13}}>{contact.phone || ''}</div>
+              <div style={{ fontSize: 12, color: COLOR_CORAL, marginTop: 2 }}>
+                {Array.isArray(contact.tags) && contact.tags.length > 0
+                  ? contact.tags.map(tag => (
+                    <span key={tag} style={{
+                      display: 'inline-block', fontSize: 13, color: COLOR_CORAL,
+                      background: '#fff2f1', borderRadius: 4, padding: '2px 8px', marginRight: 6
+                    }}>{tag}</span>
+                  ))
+                  : ''}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 8}}>
+        <button style={{
+          background: COLOR_PRIMARY, color: COLOR_WHITE, border: "none",
+          borderRadius: 6, padding: "7px 19px", fontWeight: 700, cursor: "pointer"
+        }} onClick={toggleSelectAll}>
+          {selectedContacts.size < filteredContacts().length ? 'Select All' : 'Unselect All'}
+        </button>
+        <span style={{fontWeight: 600, color: COLOR_PRIMARY, fontSize: 15}}>Selected: {selectedContacts.size}</span>
+      </div>
+      <div style={{display: "flex", justifyContent: "flex-end", gap: 10}}>
+        <button
+          onClick={() => setContactsModal(false)}
+          style={{
+            padding: "10px 30px", borderRadius: 8, fontWeight: 700,
+            background: "#eee", border: "none", color: COLOR_DARK, cursor: "pointer"
+          }}
+        >Cancel</button>
+        <button
+          onClick={handleLaunchCampaign}
+          disabled={campaignLoading || selectedContacts.size === 0 || !!rateLimitError}
+          style={{
+            padding: "10px 30px", borderRadius: 8, fontWeight: 700,
+            background: campaignLoading || selectedContacts.size === 0 || !!rateLimitError ? "#ecb6b2" : COLOR_CORAL,
+            color: COLOR_WHITE, border: "none", cursor: campaignLoading || selectedContacts.size === 0 || !!rateLimitError ? "not-allowed" : "pointer"
+          }}
+        >
+          {campaignLoading ? 'Launching...' : `🎯 Launch Campaign (${selectedContacts.size})`}
+        </button>
+      </div>
+      {rateLimitError && (
+        <div style={{
+          background: '#fff2f2', color: '#d43636', border: `1.5px solid #d43636`,
+          padding: '10px', borderRadius: '10px', marginTop: '14px', fontWeight: 600,
+        }}>
+          <strong>🚦 Rate Limit Hit:</strong>
+          <div>{rateLimitError.message}</div>
+        </div>
+      )}
+    </div>
+  );
 
-  const styles = {
-    main: {
-      padding: '40px 0',
-      fontFamily: 'Inter, Arial, sans-serif',
-      background: COLOR_LIGHT_BG,
-      minHeight: '100vh',
-      color: COLOR_DARK,
-      transition: 'background 0.2s'
-    },
-    card: {
-      background: COLOR_WHITE,
-      borderRadius: '18px',
-      boxShadow: '0 4px 16px rgba(35,36,58,0.07)',
-      padding: '36px 38px',
-      maxWidth: 700,
-      margin: '0 auto 40px auto',
-      border: `1.5px solid ${COLOR_GRAY}`,
-    },
-    logo: {
-      width: 180,
-      display: 'block',
-      margin: '0 auto 18px auto',
-      objectFit: 'contain',
-      background: "transparent",
-      borderRadius: 8,
-      boxShadow: "none",
-    },
-    title: {
-      color: COLOR_PRIMARY,
-      fontWeight: 900,
-      fontSize: '2.3rem',
-      marginBottom: '10px',
-      letterSpacing: '-1.5px',
-    },
-    subtitle: {
-      color: '#6d6d7b',
-      fontSize: '1.09rem',
-      marginBottom: '22px',
-      fontWeight: 500,
-    },
-    label: {
-      fontWeight: 600,
-      color: COLOR_PRIMARY,
-      marginBottom: '6px',
-      display: 'block',
-    },
-    select: {
-      width: '100%',
-      padding: '11px',
-      borderRadius: '8px',
-      border: `1.8px solid ${COLOR_GRAY}`,
-      fontSize: '1.04rem',
-      marginBottom: '18px',
-      background: COLOR_LIGHT_BG,
-      color: COLOR_DARK,
-      outline: 'none',
-      transition: 'border-color 0.2s',
-    },
-    textarea: {
-      width: '100%',
-      minHeight: '86px',
-      borderRadius: '8px',
-      padding: '10px',
-      border: `1.7px solid ${COLOR_GRAY}`,
-      fontSize: '1rem',
-      background: COLOR_LIGHT_BG,
-      color: COLOR_DARK,
-      marginTop: '4px',
-      marginBottom: '18px',
-      outline: 'none',
-      transition: 'border-color 0.2s',
-    },
-    buttonPrimary: {
-      width: '100%',
-      padding: '14px 0',
-      background: COLOR_CORAL,
-      color: COLOR_WHITE,
-      fontWeight: 700,
-      border: 'none',
-      borderRadius: '8px',
-      fontSize: '1.1rem',
-      cursor: 'pointer',
-      marginBottom: '14px',
-      transition: 'background 0.18s, transform 0.15s',
-      boxShadow: '0 2px 8px rgba(255,142,135,0.07)',
-    },
-    buttonPrimaryDisabled: {
-      opacity: 0.5,
-      cursor: 'not-allowed',
-      pointerEvents: 'none',
-    },
-    buttonSecondary: {
-      background: COLOR_PRIMARY,
-      color: COLOR_WHITE,
-      borderRadius: '8px',
-      padding: '10px 20px',
-      fontWeight: 600,
-      border: 'none',
-      cursor: 'pointer',
-      fontSize: '1.04rem',
-      marginBottom: '16px',
-      transition: 'background 0.18s',
-    },
-    input: {
-      width: '100%',
-      padding: '10px',
-      borderRadius: '8px',
-      border: `1.7px solid ${COLOR_GRAY}`,
-      fontSize: '1rem',
-      marginBottom: '12px',
-      outline: 'none',
-      background: COLOR_LIGHT_BG,
-      color: COLOR_DARK,
-      transition: 'border-color 0.2s',
-    },
-    contactCard: {
-      borderRadius: '10px',
-      background: COLOR_WHITE,
-      boxShadow: '0 1px 5px rgba(35,36,58,0.04)',
-      padding: '16px 20px',
-      marginBottom: '10px',
-      display: 'flex',
-      alignItems: 'center',
-      border: `1px solid ${COLOR_GRAY}`,
-      transition: 'box-shadow 0.16s',
-    },
-    checkbox: {
-      accentColor: COLOR_CORAL,
-      marginRight: '18px',
-      width: 22,
-      height: 22,
-      cursor: 'pointer',
-    },
-    tag: {
-      display: 'inline-block',
-      fontSize: '0.93rem',
-      color: COLOR_CORAL,
-      background: '#fff2f1',
-      borderRadius: '4px',
-      padding: '2px 8px',
-      marginRight: '7px',
-      marginTop: '4px',
-    },
-    debugSection: {
-      background: '#f3f6fa',
-      borderRadius: '8px',
-      padding: '12px 15px',
-      marginBottom: '18px',
-      fontSize: '0.97rem',
-      color: COLOR_DARK,
-      border: `1px solid ${COLOR_GRAY}`,
-    },
-    tagFilterRow: {
-      display: 'flex',
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: '14px',
-      marginBottom: '12px',
-      maxWidth: 530,
-    },
-    pagination: {
-      marginTop: 18,
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
-    rateLimit: {
-      background: '#fff2f2',
-      color: '#d43636',
-      border: `1.5px solid #d43636`,
-      padding: '16px',
-      borderRadius: '10px',
-      marginBottom: '18px',
-      fontWeight: 600,
-    },
-    countText: { color: COLOR_PRIMARY, fontWeight: 700 },
-    launchInfo: { marginTop: 14, fontSize: 13, color: '#888' },
-    campaignNameField: { fontSize: 12, color: COLOR_CORAL, marginTop: 2 }
-  };
-
+  // Main design
   return (
-    <div style={styles.main}>
+    <div style={{
+      minHeight: "100vh",
+      background: "#fafbfc",
+      fontFamily: "Inter, Arial, sans-serif"
+    }}>
       <img
         src="/logo.png"
         alt="foreverbooked logo"
-        style={styles.logo}
+        style={{
+          width: 180, display: 'block', margin: '0 auto 18px auto',
+          objectFit: 'contain', background: "transparent", borderRadius: 8, boxShadow: "none"
+        }}
         onError={e => { e.target.src = "https://via.placeholder.com/180x80?text=Logo"; }}
       />
 
-      <div style={styles.card}>
-        <div style={styles.title}>Booster Shot Campaign Launcher</div>
-        <div style={styles.subtitle}>Send optimized, branded SMS campaigns to your contacts in style.</div>
+      <div style={{
+        background: COLOR_WHITE,
+        borderRadius: 18,
+        boxShadow: '0 4px 16px rgba(35,36,58,0.07)',
+        padding: '36px 38px',
+        maxWidth: 650,
+        margin: '0 auto 40px auto',
+        border: `1.5px solid ${COLOR_GRAY}`,
+      }}>
+        <div style={{display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10}}>
+          <div>
+            <span style={{fontWeight: 900, fontSize: "2.1rem", color: COLOR_PRIMARY}}>SMS Campaign</span>
+            <div style={{fontSize: 15, color: "#888", marginTop: 2}}>Professional Campaign Management</div>
+          </div>
+          <span style={{
+            fontWeight: 700, color: COLOR_CORAL, background: "#fff2f1",
+            borderRadius: 6, padding: "7px 15px", fontSize: 14
+          }}>
+            {locationId ? `Subaccount: ${locationId}` : ""}
+          </span>
+        </div>
+        <hr style={{margin: "18px 0"}} />
 
         {locationId ? (
           <>
-            <div style={{marginBottom: 20}}>
-              <span style={{fontWeight: 600, color: COLOR_PRIMARY}}>Subaccount ID:</span>
-              &nbsp;{locationId}
+            {/* Campaign config */}
+            <div style={{display: "flex", gap: 16, marginBottom: 18}}>
+              <div style={{flex: 1}}>
+                <label style={{
+                  fontWeight: 600, color: COLOR_PRIMARY, marginBottom: 7, display: 'block', fontSize: 15
+                }}>Campaign Category</label>
+                <select
+                  value={boosterShotMessage}
+                  onChange={e => setBoosterShotMessage(e.target.value)}
+                  style={{
+                    width: "100%",
+                    borderRadius: 8,
+                    border: `1.8px solid ${COLOR_GRAY}`,
+                    padding: 10,
+                    fontSize: 15
+                  }}
+                >
+                  <option value="">-- Select Booster Shot --</option>
+                  {offerCategories.map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{flex: 1}}>
+                <label style={{
+                  fontWeight: 600, color: COLOR_PRIMARY, marginBottom: 7, display: 'block', fontSize: 15
+                }}>Campaign Template</label>
+                <select
+                  value={campaign}
+                  onChange={e => setCampaign(e.target.value)}
+                  style={{
+                    width: "100%",
+                    borderRadius: 8,
+                    border: `1.8px solid ${COLOR_GRAY}`,
+                    padding: 10,
+                    fontSize: 15
+                  }}
+                  disabled={!boosterShotMessage}
+                >
+                  <option value="">-- Select Campaign --</option>
+                  {campaignNames.map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              </div>
             </div>
-
-            <div>
-              <label style={styles.label}>Booster Shot message Selection</label>
-              <select
-                value={boosterShotMessage}
-                onChange={e => setBoosterShotMessage(e.target.value)}
-                style={styles.select}
-              >
-                <option value="">-- Select Booster Shot --</option>
-                {offerCategories.map(opt => (
-                  <option key={opt} value={opt}>{opt}</option>
-                ))}
-              </select>
-
-              <label style={styles.label}>Select Campaign</label>
-              <select
-                value={campaign}
-                onChange={e => setCampaign(e.target.value)}
-                style={styles.select}
-                disabled={!boosterShotMessage}
-              >
-                <option value="">-- Select Campaign --</option>
-                {campaignNames.map(opt => (
-                  <option key={opt} value={opt}>{opt}</option>
-                ))}
-              </select>
-
-              <label style={styles.label}>Your SMS message goes here</label>
+            <div style={{marginBottom: 18}}>
+              <label style={{
+                fontWeight: 600, color: COLOR_PRIMARY, marginBottom: 4, display: 'block', fontSize: 15
+              }}>SMS Message</label>
               <textarea
                 placeholder="Type your SMS/Text here..."
                 value={smsMessage}
                 onChange={e => setSmsMessage(e.target.value)}
-                style={styles.textarea}
-              />
-
-              <button
-                onClick={handleOptimizeAI}
-                disabled={optimizing || !smsMessage}
                 style={{
-                  ...styles.buttonPrimary,
-                  ...(optimizing || !smsMessage ? styles.buttonPrimaryDisabled : {})
+                  width: "100%",
+                  minHeight: '86px',
+                  borderRadius: '8px',
+                  padding: '10px',
+                  border: `1.7px solid ${COLOR_GRAY}`,
+                  fontSize: '1rem',
+                  background: COLOR_LIGHT_BG,
+                  color: COLOR_DARK,
+                  marginTop: '4px',
+                  marginBottom: '8px',
+                  outline: 'none',
+                  transition: 'border-color 0.2s',
+                  resize: "vertical"
                 }}
-              >
-                {optimizing ? 'Optimizing...' : '🤖 Optimize Using AI'}
-              </button>
-
-              <div style={{ display: 'flex', gap: 12, marginBottom: 18 }}>
-                <input
-                  type="text"
-                  placeholder="Enter phone number"
-                  value={testPhone}
-                  onChange={e => setTestPhone(e.target.value)}
-                  style={styles.input}
-                />
+              />
+              <div style={{display: "flex", justifyContent: "space-between", alignItems: "center"}}>
+                <span style={{fontSize: 13, color: "#888"}}>
+                  {getCharCount()}/{getSMSCount() * 160} characters ({getSMSCount()} SMS{getSMSCount() > 1 ? "es" : ""})
+                </span>
                 <button
-                  onClick={handleSendTest}
-                  disabled={sendingTest || !smsMessage || !testPhone}
+                  onClick={handleOptimizeAI}
+                  disabled={optimizing || !smsMessage}
                   style={{
-                    ...styles.buttonSecondary,
-                    background: sendingTest ? '#bbb' : COLOR_PRIMARY,
-                    opacity: sendingTest || !smsMessage || !testPhone ? 0.6 : 1
+                    padding: "7px 18px",
+                    borderRadius: 7,
+                    background: optimizing || !smsMessage ? "#f2b4b1" : COLOR_CORAL,
+                    color: COLOR_WHITE,
+                    fontWeight: 700,
+                    border: 'none',
+                    cursor: optimizing || !smsMessage ? "not-allowed" : "pointer"
                   }}
                 >
-                  {sendingTest ? 'Sending...' : 'Send Test Message'}
+                  {optimizing ? 'Optimizing...' : '🤖 Optimize with AI'}
                 </button>
-              </div>
-
-              <button
-                onClick={handleLaunchCampaign}
-                disabled={campaignLoading || selectedContacts.size === 0 || !!rateLimitError}
-                style={{
-                  ...styles.buttonPrimary,
-                  background: COLOR_SUCCESS,
-                  ...(campaignLoading || selectedContacts.size === 0 || !!rateLimitError ? styles.buttonPrimaryDisabled : {})
-                }}
-              >
-                {campaignLoading ? 'Launching...' : '🎯 Launch Campaign'}
-              </button>
-              <div style={styles.launchInfo}>
-                <em>Select contacts below before clicking Launch Campaign</em>
               </div>
             </div>
 
-            <button
-              onClick={handleLoadContacts}
-              disabled={loading}
-              style={{
-                ...styles.buttonSecondary,
-                width: '100%',
-                marginTop: 26,
-                marginBottom: 10,
-                background: loading ? '#bbb' : COLOR_PRIMARY,
-                opacity: loading ? 0.7 : 1
-              }}
-            >
-              {loading ? 'Loading...' : 'Select Campaign Contacts'}
-            </button>
+            {/* Test */}
+            <div style={{display: "flex", alignItems: "center", gap: 13, marginBottom: 20}}>
+              <input
+                type="text"
+                placeholder="Enter test phone number"
+                value={testPhone}
+                onChange={e => setTestPhone(e.target.value)}
+                style={{
+                  flex: 1,
+                  borderRadius: 8,
+                  border: `1.7px solid ${COLOR_GRAY}`,
+                  padding: '10px',
+                  fontSize: '1rem',
+                  outline: 'none',
+                  background: COLOR_LIGHT_BG,
+                  color: COLOR_DARK,
+                  transition: 'border-color 0.2s',
+                }}
+              />
+              <button
+                onClick={handleSendTest}
+                disabled={sendingTest || !smsMessage || !testPhone}
+                style={{
+                  padding: "8px 22px",
+                  borderRadius: 7,
+                  background: sendingTest || !smsMessage || !testPhone ? "#bbb" : COLOR_PRIMARY,
+                  color: COLOR_WHITE,
+                  fontWeight: 700,
+                  border: "none",
+                  cursor: sendingTest || !smsMessage || !testPhone ? "not-allowed" : "pointer"
+                }}
+              >
+                {sendingTest ? 'Sending...' : 'Send Test'}
+              </button>
+            </div>
 
-            {rateLimitError && (
-              <div style={styles.rateLimit}>
-                <strong>🚦 Rate Limit Hit:</strong>
-                <div>{rateLimitError.message}</div>
-                {getResetTimeString() && (
-                  <div>Try again in {getResetTimeString()}.</div>
-                )}
-              </div>
-            )}
-
-            {contactsLoaded && (
-              <>
-                <div style={styles.debugSection}>
-                  <h4>Debug Info:</h4>
-                  <pre>{JSON.stringify({
-                    currentPage,
-                    totalCount,
-                    hasNextPage: !!nextPageUrl,
-                    nextPageUrlSnippet: nextPageUrl?.split('startAfter=')[1]?.substring(0, 20),
-                    loading
-                  }, null, 2)}</pre>
-                </div>
-
-                <h3 style={{marginTop: 20, marginBottom: 10, color: COLOR_PRIMARY}}>Campaign Contacts</h3>
-
-                <div style={styles.tagFilterRow}>
-                  <select
-                    value={selectedTag}
-                    onChange={e => setSelectedTag(e.target.value)}
-                    style={styles.select}
-                  >
-                    <option value="">All Tags</option>
-                    {tags.map(tag => (
-                      <option key={tag} value={tag}>{tag}</option>
-                    ))}
-                  </select>
-                  <input
-                    type="text"
-                    placeholder="Search contacts by name, email, or phone..."
-                    value={searchTerm}
-                    onChange={e => setSearchTerm(e.target.value)}
-                    style={styles.input}
-                  />
-                </div>
-
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '8px'
-                }}>
-                  <button style={styles.buttonSecondary} onClick={toggleSelectAll}>
-                    {selectedContacts.size < filteredContacts().length ? 'Select All' : 'Unselect All'}
-                  </button>
-                  <div style={styles.countText}>Selected: {selectedContacts.size}</div>
-                </div>
-
-                {filteredContacts().map((contact) => (
-                  <div key={contact.id} style={styles.contactCard}>
-                    <input
-                      type="checkbox"
-                      checked={selectedContacts.has(contact.id)}
-                      onChange={() => toggleSelectContact(contact.id)}
-                      style={styles.checkbox}
-                    />
-                    <div>
-                      <div style={{fontWeight: 700, fontSize: '1.09rem'}}>
-                        {contact.firstName || ''} {contact.lastName || ''}
-                      </div>
-                      <div style={{color: '#8b8b99', fontSize: '0.98rem'}}>{contact.email || ''}</div>
-                      <div style={{color: '#8b8b99', fontSize: '0.98rem'}}>{contact.phone || ''}</div>
-                      <div style={{ fontSize: '12px', color: COLOR_CORAL, marginTop: '2px' }}>
-                        {Array.isArray(contact.tags) && contact.tags.length > 0
-                          ? contact.tags.map(tag => (
-                            <span key={tag} style={styles.tag}>{tag}</span>
-                          ))
-                          : ''}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-
-                <div style={styles.pagination}>
-                  <button
-                    style={styles.buttonSecondary}
-                    onClick={handlePreviousPage}
-                    disabled={currentPage === 1 || loading}
-                  >
-                    Previous
-                  </button>
-                  <div style={{fontWeight: 600}}>
-                    Page {currentPage} of {Math.ceil(totalCount / limit)}
-                  </div>
-                  <button
-                    style={{
-                      ...styles.buttonSecondary,
-                      background: nextPageUrl ? COLOR_CORAL : '#bbb',
-                      cursor: nextPageUrl ? 'pointer' : 'not-allowed'
-                    }}
-                    onClick={handleNextPage}
-                    disabled={!nextPageUrl || loading}
-                  >
-                    Next
-                  </button>
-                </div>
-              </>
-            )}
+            {/* Contacts selection */}
+            <div style={{marginBottom: 24}}>
+              <label style={{
+                fontWeight: 600, color: COLOR_PRIMARY, marginBottom: 4, display: 'block', fontSize: 15
+              }}>Select Campaign Contacts</label>
+              <button
+                onClick={openContactsModal}
+                style={{
+                  padding: "11px 18px",
+                  borderRadius: 8,
+                  background: "#fff2f1",
+                  color: COLOR_CORAL,
+                  fontWeight: 700,
+                  fontSize: 16,
+                  border: `1.7px solid ${COLOR_CORAL}`,
+                  cursor: "pointer"
+                }}
+              >
+                {selectedContacts.size === 0
+                  ? "Select Contacts..."
+                  : `Selected: ${selectedContacts.size} contact${selectedContacts.size > 1 ? "s" : ""}`}
+              </button>
+            </div>
+            <Modal open={contactsModal} onClose={() => setContactsModal(false)}>
+              {contactModalUI}
+            </Modal>
           </>
         ) : (
-          <p>Could not detect subaccount ID from URL. Are you opening from the correct menu link?</p>
+          <p style={{color: "#b44", fontWeight: 600, fontSize: 17}}>
+            Could not detect subaccount ID from URL. Are you opening from the correct menu link?
+          </p>
         )}
       </div>
     </div>
