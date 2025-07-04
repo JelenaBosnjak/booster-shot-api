@@ -135,12 +135,16 @@ export default function ContactList() {
       }
       return null;
     }
+    // Use localStorage only if not already set, to persist selection even on back navigation
+    const existing = localStorage.getItem("locationId");
     const id = getLocationId();
-    if (id) {
+    if (id && (!existing || existing !== id)) {
       setLocationId(id);
       if (typeof window !== "undefined") {
         localStorage.setItem("locationId", id);
       }
+    } else if (existing) {
+      setLocationId(existing);
     }
   }, [router.asPath]);
 
@@ -597,14 +601,14 @@ export default function ContactList() {
       background: "#fafbfc",
       fontFamily: FONT_FAMILY
     }}>
-      <div style={{height: 30}} /> {/* Top spacer */}
+      <div style={{height: 16}} /> {/* Top spacer */}
       <img
         src="/logo.png"
         alt="foreverbooked logo"
         style={{
           width: 180,
           display: 'block',
-          margin: '0 auto 26px auto',
+          margin: '0 auto 18px auto',
           objectFit: 'contain',
           background: "transparent",
           borderRadius: 0,
@@ -614,7 +618,7 @@ export default function ContactList() {
         }}
         onError={e => { e.target.src = "https://via.placeholder.com/180x60?text=Logo"; }}
       />
-
+      <div style={{height: 6}} /> {/* Less space between logo and form */}
       <div style={{
         background: COLOR_WHITE,
         borderRadius: 18,
@@ -631,7 +635,7 @@ export default function ContactList() {
             <div style={{fontSize: 15, color: "#888", marginTop: 2, fontFamily: FONT_FAMILY}}>Professional Campaign Management</div>
           </div>
           <a
-            href="/status"
+            href="/stats"
             style={{
               marginLeft: 24,
               background: "#333",
