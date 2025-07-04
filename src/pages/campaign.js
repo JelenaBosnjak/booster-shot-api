@@ -12,6 +12,9 @@ const COLOR_WHITE = "#fff";
 const COLOR_SUCCESS = "#28a745";
 const COLOR_PRIMARY = COLOR_DARK;
 
+// HighLevel menu font
+const FONT_FAMILY = '"Inter", "Lato", "Segoe UI", "Arial", sans-serif';
+
 const WEB_APP_URL =
   "https://script.google.com/macros/s/AKfycbzkVfD4fEUHuGryVKiRR_SKtWeyMFCkxTyGeAKPlaY0yR5XJq_0xuYYEbA6v3odZeMKHA/exec";
 
@@ -34,7 +37,8 @@ function Modal({ open, onClose, children }) {
           maxWidth: 850,
           width: "98vw",
           padding: 32,
-          position: "relative"
+          position: "relative",
+          fontFamily: FONT_FAMILY
         }}
         onClick={e => e.stopPropagation()}
       >
@@ -440,7 +444,7 @@ export default function ContactList() {
   // Modal - Contact selection UI
   const contactModalUI = (
     <div>
-      <h2 style={{marginTop: 0, marginBottom: 20, color: COLOR_PRIMARY, fontWeight: 800}}>
+      <h2 style={{marginTop: 0, marginBottom: 20, color: COLOR_PRIMARY, fontWeight: 800, fontFamily: FONT_FAMILY}}>
         Before launching Select Campaign Contacts
       </h2>
       <div style={{display: "flex", gap: 14, marginBottom: 16}}>
@@ -452,7 +456,8 @@ export default function ContactList() {
             borderRadius: 8,
             border: `1.5px solid ${COLOR_GRAY}`,
             padding: 8,
-            fontSize: 15
+            fontSize: 15,
+            fontFamily: FONT_FAMILY
           }}
         >
           <option value="">All Tags</option>
@@ -470,7 +475,8 @@ export default function ContactList() {
             borderRadius: 8,
             border: `1.5px solid ${COLOR_GRAY}`,
             padding: 8,
-            fontSize: 15
+            fontSize: 15,
+            fontFamily: FONT_FAMILY
           }}
         />
       </div>
@@ -484,7 +490,8 @@ export default function ContactList() {
         {filteredContacts().map((contact) => (
           <div key={contact.id} style={{
             display: 'flex', alignItems: 'center', padding: "8px 2px", borderBottom: `1px solid ${COLOR_GRAY}`,
-            background: selectedContacts.has(contact.id) ? COLOR_CORAL_LIGHT : "inherit"
+            background: selectedContacts.has(contact.id) ? COLOR_CORAL_LIGHT : "inherit",
+            fontFamily: FONT_FAMILY
           }}>
             <input
               type="checkbox"
@@ -495,17 +502,18 @@ export default function ContactList() {
               }}
             />
             <div>
-              <div style={{fontWeight: 700, fontSize: 15}}>
+              <div style={{fontWeight: 700, fontSize: 15, fontFamily: FONT_FAMILY}}>
                 {contact.firstName || ''} {contact.lastName || ''}
               </div>
-              <div style={{color: '#8b8b99', fontSize: 13}}>{contact.email || ''}</div>
-              <div style={{color: '#8b8b99', fontSize: 13}}>{contact.phone || ''}</div>
+              <div style={{color: '#8b8b99', fontSize: 13, fontFamily: FONT_FAMILY}}>{contact.email || ''}</div>
+              <div style={{color: '#8b8b99', fontSize: 13, fontFamily: FONT_FAMILY}}>{contact.phone || ''}</div>
               <div style={{ fontSize: 12, color: COLOR_CORAL, marginTop: 2 }}>
                 {Array.isArray(contact.tags) && contact.tags.length > 0
                   ? contact.tags.map(tag => (
                     <span key={tag} style={{
                       display: 'inline-block', fontSize: 13, color: COLOR_CORAL,
-                      background: COLOR_CORAL_LIGHTER, borderRadius: 4, padding: '2px 8px', marginRight: 6
+                      background: COLOR_CORAL_LIGHTER, borderRadius: 4, padding: '2px 8px', marginRight: 6,
+                      fontFamily: FONT_FAMILY
                     }}>{tag}</span>
                   ))
                   : ''}
@@ -517,24 +525,24 @@ export default function ContactList() {
       <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 8}}>
         <button style={{
           background: COLOR_PRIMARY, color: COLOR_WHITE, border: "none",
-          borderRadius: 6, padding: "7px 19px", fontWeight: 700, cursor: "pointer"
+          borderRadius: 6, padding: "7px 19px", fontWeight: 700, cursor: "pointer", fontFamily: FONT_FAMILY
         }} onClick={toggleSelectAll}>
           {filteredContacts().length > 0 && filteredContacts().every(c => selectedContacts.has(c.id))
             ? 'Unselect All' : 'Select All'}
         </button>
-        <span style={{fontWeight: 600, color: COLOR_PRIMARY, fontSize: 15}}>Selected: {selectedContacts.size}</span>
+        <span style={{fontWeight: 600, color: COLOR_PRIMARY, fontSize: 15, fontFamily: FONT_FAMILY}}>Selected: {selectedContacts.size}</span>
       </div>
       {/* Pagination */}
       <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16}}>
         <button
           style={{
             background: "#efefef", color: "#444", border: "none", borderRadius: 6,
-            padding: "8px 24px", fontWeight: 700, cursor: currentPage === 1 ? "not-allowed" : "pointer"
+            padding: "8px 24px", fontWeight: 700, cursor: currentPage === 1 ? "not-allowed" : "pointer", fontFamily: FONT_FAMILY
           }}
           onClick={handlePreviousPage}
           disabled={currentPage === 1}
         >Previous</button>
-        <span style={{fontSize: 15, color: "#888"}}>
+        <span style={{fontSize: 15, color: "#888", fontFamily: FONT_FAMILY}}>
           Page {currentPage} of {Math.max(1, Math.ceil(totalCount / limit))}
         </span>
         <button
@@ -542,7 +550,7 @@ export default function ContactList() {
             background: nextPageUrl ? COLOR_CORAL : "#efefef",
             color: nextPageUrl ? COLOR_WHITE : "#888",
             border: "none", borderRadius: 6,
-            padding: "8px 24px", fontWeight: 700, cursor: nextPageUrl ? "pointer" : "not-allowed"
+            padding: "8px 24px", fontWeight: 700, cursor: nextPageUrl ? "pointer" : "not-allowed", fontFamily: FONT_FAMILY
           }}
           onClick={handleNextPage}
           disabled={!nextPageUrl}
@@ -553,7 +561,7 @@ export default function ContactList() {
           onClick={() => setContactsModal(false)}
           style={{
             padding: "10px 30px", borderRadius: 8, fontWeight: 700,
-            background: "#eee", border: "none", color: COLOR_DARK, cursor: "pointer"
+            background: "#eee", border: "none", color: COLOR_DARK, cursor: "pointer", fontFamily: FONT_FAMILY
           }}
         >Cancel</button>
         <button
@@ -562,7 +570,8 @@ export default function ContactList() {
           style={{
             padding: "10px 30px", borderRadius: 8, fontWeight: 700,
             background: campaignLoading || selectedContacts.size === 0 || !!rateLimitError ? "#ecb6b2" : COLOR_CORAL,
-            color: COLOR_WHITE, border: "none", cursor: campaignLoading || selectedContacts.size === 0 || !!rateLimitError ? "not-allowed" : "pointer"
+            color: COLOR_WHITE, border: "none", cursor: campaignLoading || selectedContacts.size === 0 || !!rateLimitError ? "not-allowed" : "pointer",
+            fontFamily: FONT_FAMILY
           }}
         >
           {campaignLoading ? 'Launching...' : `🎯 Launch Campaign (${selectedContacts.size})`}
@@ -572,6 +581,7 @@ export default function ContactList() {
         <div style={{
           background: '#fff2f2', color: '#d43636', border: `1.5px solid #d43636`,
           padding: '10px', borderRadius: '10px', marginTop: '14px', fontWeight: 600,
+          fontFamily: FONT_FAMILY
         }}>
           <strong>🚦 Rate Limit Hit:</strong>
           <div>{rateLimitError.message}</div>
@@ -585,16 +595,24 @@ export default function ContactList() {
     <div style={{
       minHeight: "100vh",
       background: "#fafbfc",
-      fontFamily: "Inter, Arial, sans-serif"
+      fontFamily: FONT_FAMILY
     }}>
+      <div style={{height: 30}} /> {/* Top spacer */}
       <img
         src="/logo.png"
         alt="foreverbooked logo"
         style={{
-          width: 180, display: 'block', margin: '0 auto 18px auto',
-          objectFit: 'contain', background: "transparent", borderRadius: 8, boxShadow: "none"
+          width: 180,
+          display: 'block',
+          margin: '0 auto 26px auto',
+          objectFit: 'contain',
+          background: "transparent",
+          borderRadius: 0,
+          boxShadow: "none",
+          height: 60,
+          maxHeight: 60
         }}
-        onError={e => { e.target.src = "https://via.placeholder.com/180x80?text=Logo"; }}
+        onError={e => { e.target.src = "https://via.placeholder.com/180x60?text=Logo"; }}
       />
 
       <div style={{
@@ -605,11 +623,12 @@ export default function ContactList() {
         maxWidth: 880,
         margin: '0 auto 40px auto',
         border: `1.5px solid ${COLOR_GRAY}`,
+        fontFamily: FONT_FAMILY
       }}>
         <div style={{display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10}}>
           <div>
-            <span style={{fontWeight: 900, fontSize: "2.1rem", color: COLOR_PRIMARY}}>SMS Campaign</span>
-            <div style={{fontSize: 15, color: "#888", marginTop: 2}}>Professional Campaign Management</div>
+            <span style={{fontWeight: 900, fontSize: "2.1rem", color: COLOR_PRIMARY, fontFamily: FONT_FAMILY}}>SMS Campaign</span>
+            <div style={{fontSize: 15, color: "#888", marginTop: 2, fontFamily: FONT_FAMILY}}>Professional Campaign Management</div>
           </div>
           <a
             href="/status"
@@ -625,7 +644,8 @@ export default function ContactList() {
               border: "none",
               textDecoration: "none",
               boxShadow: "0 2px 6px rgba(44,44,55,0.08)",
-              transition: "background 0.16s"
+              transition: "background 0.16s",
+              fontFamily: FONT_FAMILY
             }}
           >
             See Status
@@ -639,7 +659,7 @@ export default function ContactList() {
             <div style={{display: "flex", gap: 26, marginBottom: 30}}>
               <div style={{flex: 1}}>
                 <label style={{
-                  fontWeight: 600, color: COLOR_PRIMARY, marginBottom: 12, display: 'block', fontSize: 15
+                  fontWeight: 600, color: COLOR_PRIMARY, marginBottom: 12, display: 'block', fontSize: 15, fontFamily: FONT_FAMILY
                 }}>Campaign Category</label>
                 <select
                   value={boosterShotMessage}
@@ -650,6 +670,7 @@ export default function ContactList() {
                     border: `1.8px solid ${COLOR_GRAY}`,
                     padding: 13,
                     fontSize: 16,
+                    fontFamily: FONT_FAMILY
                   }}
                 >
                   <option value="">-- Select Booster Shot --</option>
@@ -660,7 +681,7 @@ export default function ContactList() {
               </div>
               <div style={{flex: 1}}>
                 <label style={{
-                  fontWeight: 600, color: COLOR_PRIMARY, marginBottom: 12, display: 'block', fontSize: 15
+                  fontWeight: 600, color: COLOR_PRIMARY, marginBottom: 12, display: 'block', fontSize: 15, fontFamily: FONT_FAMILY
                 }}>Campaign Template</label>
                 <select
                   value={campaign}
@@ -671,6 +692,7 @@ export default function ContactList() {
                     border: `1.8px solid ${COLOR_GRAY}`,
                     padding: 13,
                     fontSize: 16,
+                    fontFamily: FONT_FAMILY
                   }}
                   disabled={!boosterShotMessage}
                 >
@@ -683,7 +705,7 @@ export default function ContactList() {
             </div>
             <div style={{marginBottom: 30}}>
               <label style={{
-                fontWeight: 600, color: COLOR_PRIMARY, marginBottom: 10, display: 'block', fontSize: 15
+                fontWeight: 600, color: COLOR_PRIMARY, marginBottom: 10, display: 'block', fontSize: 15, fontFamily: FONT_FAMILY
               }}>SMS Message</label>
               <textarea
                 placeholder="Type your SMS/Text here..."
@@ -702,11 +724,12 @@ export default function ContactList() {
                   marginBottom: '13px',
                   outline: 'none',
                   transition: 'border-color 0.2s',
-                  resize: "vertical"
+                  resize: "vertical",
+                  fontFamily: FONT_FAMILY
                 }}
               />
               <div style={{display: "flex", justifyContent: "space-between", alignItems: "center"}}>
-                <span style={{fontSize: 13, color: "#888"}}>
+                <span style={{fontSize: 13, color: "#888", fontFamily: FONT_FAMILY}}>
                   {getCharCount()}/{getSMSCount() * 160} characters ({getSMSCount()} SMS{getSMSCount() > 1 ? "es" : ""})
                 </span>
                 <button
@@ -723,7 +746,8 @@ export default function ContactList() {
                     cursor: optimizing || !smsMessage ? "not-allowed" : "pointer",
                     outline: "none",
                     boxShadow: "0 2px 6px rgba(44,44,55,0.08)",
-                    transition: "background 0.16s"
+                    transition: "background 0.16s",
+                    fontFamily: FONT_FAMILY
                   }}
                 >
                   {optimizing ? 'Optimizing...' : 'Optimize with AI'}
@@ -751,6 +775,7 @@ export default function ContactList() {
                   background: COLOR_LIGHT_BG,
                   color: COLOR_DARK,
                   transition: 'border-color 0.2s',
+                  fontFamily: FONT_FAMILY
                 }}
               />
               <button
@@ -763,7 +788,8 @@ export default function ContactList() {
                   color: COLOR_DARK,
                   fontWeight: 700,
                   border: "1.5px solid #bbb",
-                  cursor: sendingTest || !smsMessage || !testPhone ? "not-allowed" : "pointer"
+                  cursor: sendingTest || !smsMessage || !testPhone ? "not-allowed" : "pointer",
+                  fontFamily: FONT_FAMILY
                 }}
               >
                 {sendingTest ? 'Sending...' : 'Send Test'}
@@ -773,7 +799,7 @@ export default function ContactList() {
             {/* Contacts selection */}
             <div style={{marginBottom: 16}}>
               <label style={{
-                fontWeight: 600, color: COLOR_PRIMARY, marginBottom: 7, display: 'block', fontSize: 15
+                fontWeight: 600, color: COLOR_PRIMARY, marginBottom: 7, display: 'block', fontSize: 15, fontFamily: FONT_FAMILY
               }}>Before launching Select Campaign Contacts</label>
               <button
                 onClick={openContactsModal}
@@ -789,7 +815,8 @@ export default function ContactList() {
                   boxShadow: "0 2px 6px rgba(44,44,55,0.08)",
                   outline: "none",
                   letterSpacing: 0.2,
-                  transition: "background 0.16s"
+                  transition: "background 0.16s",
+                  fontFamily: FONT_FAMILY
                 }}
               >
                 {selectedContacts.size === 0
@@ -802,7 +829,7 @@ export default function ContactList() {
             </Modal>
           </>
         ) : (
-          <p style={{color: "#b44", fontWeight: 600, fontSize: 17}}>
+          <p style={{color: "#b44", fontWeight: 600, fontSize: 17, fontFamily: FONT_FAMILY}}>
             Could not detect subaccount ID from URL. Are you opening from the correct menu link?
           </p>
         )}
