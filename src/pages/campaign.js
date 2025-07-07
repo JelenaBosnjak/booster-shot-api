@@ -308,7 +308,8 @@ export default function ContactList() {
     }
     setLatestImportLoading(true);
     try {
-      const res = await fetch(`/api/get-latest-imported-contacts?locationId=${locationId}`);
+      // Updated to call the new query param for latest import in get-contacts.js!
+      const res = await fetch(`/api/get-contacts?locationId=${locationId}&latestImport=true`);
       const data = await res.json();
 
       if (!res.ok) {
