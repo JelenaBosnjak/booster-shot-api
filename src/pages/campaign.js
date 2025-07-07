@@ -99,6 +99,9 @@ export default function ContactList() {
   const [campaignLoading, setCampaignLoading] = useState(false);
   const [contactsModal, setContactsModal] = useState(false);
 
+  // New: for "Select Latest Imported Contacts"
+  const [latestImportLoading, setLatestImportLoading] = useState(false);
+
   // Debug
   const [debugInfo, setDebugInfo] = useState({});
 
@@ -233,9 +236,6 @@ export default function ContactList() {
             setPrevPages((prev) => [...prev, url]);
           }
         }
-
-        // keep selectedContacts from previous pages!
-        // do not reset here, so user can select across pages
       } else {
         alert('API error: ' + (data.error?.message || 'Unknown error'));
       }
@@ -298,6 +298,44 @@ export default function ContactList() {
     const newSet = new Set(selectedContacts);
     newSet.has(id) ? newSet.delete(id) : newSet.add(id);
     setSelectedContacts(newSet);
+  };
+
+  // Select latest imported contacts
+  const handleSelectLatestImportedContacts = async () => {
+    if (!locationId) {
+      alert('Location ID not found.');
+      return;
+    }
+    setLatestImportLoading(true);
+    try {
+      const res = await fetch(`/api/get-latest-imported-contacts?locationId=${locationId}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error || "Failed to load latest imported contacts.");
+        setLatestImportLoading(false);
+        return;
+      }
+
+      if (!data.contacts || data.contacts.length === 0) {
+        alert("No latest imported contacts found.");
+        setLatestImportLoading(false);
+        return;
+      }
+
+      const newSet = new Set(selectedContacts);
+      data.contacts.forEach(contact => {
+        if (contact.id) newSet.add(contact.id);
+      });
+      setSelectedContacts(newSet);
+
+      // Optionally, you could show a message:
+      alert(`Selected ${data.contacts.length} contacts from latest import batch (${data.latestImportDate || "unknown date"}).`);
+    } catch (err) {
+      alert("Failed to select latest imported contacts.");
+    } finally {
+      setLatestImportLoading(false);
+    }
   };
 
   // Pagination in modal
@@ -451,24 +489,46 @@ export default function ContactList() {
       <h2 style={{marginTop: 0, marginBottom: 20, color: COLOR_PRIMARY, fontWeight: 800, fontFamily: FONT_FAMILY}}>
         Before launching Select Campaign Contacts
       </h2>
-      <div style={{display: "flex", gap: 14, marginBottom: 16}}>
-        <select
-          value={selectedTag}
-          onChange={e => setSelectedTag(e.target.value)}
-          style={{
-            width: 200,
-            borderRadius: 8,
-            border: `1.5px solid ${COLOR_GRAY}`,
-            padding: 8,
-            fontSize: 15,
-            fontFamily: FONT_FAMILY
-          }}
-        >
-          <option value="">All Tags</option>
-          {tags.map(tag => (
-            <option key={tag} value={tag}>{tag}</option>
-          ))}
-        </select>
+      <div style={{display: "flex", gap: 14, marginBottom: 12, alignItems: "flex-end"}}>
+        <div style={{display: "flex", flexDirection: "column", gap: 6}}>
+          <select
+            value={selectedTag}
+            onChange={e => setSelectedTag(e.target.value)}
+            style={{
+              width: 200,
+              borderRadius: 8,
+              border: `1.5px solid ${COLOR_GRAY}`,
+              padding: 8,
+              fontSize: 15,
+              fontFamily: FONT_FAMILY
+            }}
+          >
+            <option value="">All Contacts</option>
+            {tags.map(tag => (
+              <option key={tag} value={tag}>{tag}</option>
+            ))}
+          </select>
+          <button
+            onClick={handleSelectLatestImportedContacts}
+            disabled={latestImportLoading}
+            style={{
+              marginTop: 0,
+              background: "#e4f2dd",
+              color: "#22723e",
+              border: "none",
+              borderRadius: 7,
+              padding: "8px 0",
+              fontWeight: 800,
+              fontSize: 14,
+              width: 200,
+              cursor: latestImportLoading ? "not-allowed" : "pointer",
+              boxShadow: latestImportLoading ? "none" : "0 1px 4px 0 rgba(60,140,80,0.06)",
+              transition: "background 0.13s"
+            }}
+          >
+            {latestImportLoading ? "Selecting..." : "Select Latest Import"}
+          </button>
+        </div>
         <input
           type="text"
           placeholder="Search contacts by name, email, or phone..."

@@ -4,58 +4,86 @@ export default async function handler(req, res) {
   }
 
   const API_TOKEN = process.env.GHL_API_TOKEN;
-  const { locationId, limit = 20, startAfter, startAfterId } = req.query;
+  const { locationId } = req.query;
 
   if (!API_TOKEN) {
     return res.status(500).json({ error: 'Missing API token' });
   }
 
-  try {
-    // Build query params for GHL API
-    const params = new URLSearchParams();
-    params.append('limit', limit);
-    if (locationId) params.append('locationId', locationId);
-    if (startAfter) params.append('startAfter', startAfter);
-    if (startAfterId) params.append('startAfterId', startAfterId);
+  // Use your actual custom field key for import history
+  const IMPORT_DATE_FIELD_KEY = 'import_history';
 
-    const ghlUrl = `https://rest.gohighlevel.com/v1/contacts?${params.toString()}`;
+  async function fetchAllContactsByLocation() {
+    let allContacts = [];
+    let nextPageToken = null;
+    let nextPageId = null;
 
-    const response = await fetch(ghlUrl, {
-      headers: {
-        Authorization: `Bearer ${API_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-    });
+    do {
+      const params = new URLSearchParams();
+      params.append('limit', 100);
+      if (locationId) params.append('locationId', locationId);
+      if (nextPageToken) params.append('startAfter', nextPageToken);
+      if (nextPageId) params.append('startAfterId', nextPageId);
 
-    if (!response.ok) {
-      let error;
-      try {
-        error = await response.json();
-      } catch {
-        error = { message: 'Unknown API error' };
+      const ghlUrl = `https://rest.gohighlevel.com/v1/contacts?${params.toString()}`;
+      const resp = await fetch(ghlUrl, {
+        headers: {
+          Authorization: `Bearer ${API_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!resp.ok) {
+        let error;
+        try {
+          error = await resp.json();
+        } catch {
+          error = { message: 'Unknown API error' };
+        }
+        throw new Error(error.message || 'API Error');
       }
-      console.error('GHL API Error:', error);
-      return res.status(response.status).json({ error: error.message || 'API Error' });
+
+      const data = await resp.json();
+      const contacts = data.contacts || [];
+      allContacts.push(...contacts);
+
+      nextPageToken = data.meta?.startAfter || null;
+      nextPageId = data.meta?.startAfterId || null;
+    } while (nextPageToken && nextPageId);
+
+    return allContacts;
+  }
+
+  try {
+    // 1. Fetch all contacts for the location
+    const contacts = await fetchAllContactsByLocation();
+
+    // 2. Determine all unique import dates from the custom field
+    const importDates = contacts
+      .map(c => c.customField && c.customField[IMPORT_DATE_FIELD_KEY])
+      .filter(Boolean);
+
+    if (importDates.length === 0) {
+      return res.status(200).json({
+        contacts: [],
+        total: 0,
+        latestImportDate: null,
+        message: 'No imported contacts with an import date field found.'
+      });
     }
 
-    const data = await response.json();
-    const meta = data.meta || {};
+    // 3. Find the latest date (ISO string or string compare is fine if format is ISO)
+    const latestImportDate = importDates.sort().reverse()[0];
 
-    // Go High Level uses startAfter & startAfterId for pagination
-    const hasMore = !!(meta.startAfter && meta.startAfterId);
-    const nextPageUrl = hasMore
-      ? `/api/get-contacts?locationId=${locationId || ''}&limit=${limit}&startAfter=${encodeURIComponent(meta.startAfter)}&startAfterId=${encodeURIComponent(meta.startAfterId)}`
-      : null;
+    // 4. Filter contacts with that latest import date
+    const latestContacts = contacts.filter(
+      c => c.customField && c.customField[IMPORT_DATE_FIELD_KEY] === latestImportDate
+    );
 
     return res.status(200).json({
-      contacts: data.contacts || [],
-      pagination: {
-        nextPageUrl,
-        total: meta.total || 0,
-        hasMore,
-        startAfter: meta.startAfter || null,
-        startAfterId: meta.startAfterId || null
-      }
+      contacts: latestContacts,
+      total: latestContacts.length,
+      latestImportDate
     });
   } catch (error) {
     console.error('Server Error:', error);
