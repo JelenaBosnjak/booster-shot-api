@@ -10,10 +10,23 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Missing API token' });
   }
 
-  // Use your actual custom field key for import history
   const IMPORT_DATE_FIELD_KEY = 'import_history';
 
-  // Helper to fetch all contacts for "latest import" mode
+  // Helper: Get import date from a contact (works for both object and array style)
+  function getImportDate(contact) {
+    // Array style (most common)
+    if (Array.isArray(contact.customFields)) {
+      const found = contact.customFields.find(f => f.key === IMPORT_DATE_FIELD_KEY);
+      return found && found.value;
+    }
+    // Object style (rare)
+    if (contact.customField && typeof contact.customField === 'object') {
+      return contact.customField[IMPORT_DATE_FIELD_KEY];
+    }
+    return null;
+  }
+
+  // Helper: fetch all contacts for latest import functionality
   async function fetchAllContactsByLocation() {
     let allContacts = [];
     let nextPageToken = null;
@@ -59,8 +72,10 @@ export default async function handler(req, res) {
     // SPECIAL MODE: Only return latest imported contacts if requested
     if (latestImport === "true") {
       const contacts = await fetchAllContactsByLocation();
+
+      // Find all non-empty import dates
       const importDates = contacts
-        .map(c => c.customField && c.customField[IMPORT_DATE_FIELD_KEY])
+        .map(getImportDate)
         .filter(Boolean);
 
       if (importDates.length === 0) {
@@ -72,9 +87,10 @@ export default async function handler(req, res) {
         });
       }
 
+      // Sort dates as strings (ISO works fine lexicographically)
       const latestImportDate = importDates.sort().reverse()[0];
       const latestContacts = contacts.filter(
-        c => c.customField && c.customField[IMPORT_DATE_FIELD_KEY] === latestImportDate
+        c => getImportDate(c) === latestImportDate
       );
 
       return res.status(200).json({
@@ -84,7 +100,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // DEFAULT MODE: Paginated, all contacts
+    // DEFAULT MODE: Paginated contacts for pop-up
     const params = new URLSearchParams();
     params.append('limit', limit);
     if (locationId) params.append('locationId', locationId);
