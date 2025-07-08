@@ -10,20 +10,44 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Missing API token' });
   }
 
-  const IMPORT_DATE_FIELD_KEY = 'import_history';
+  // Helper: Get the Import History field ID for this location
+  async function getImportHistoryFieldId(locationId) {
+    const params = new URLSearchParams();
+    if (locationId) params.append('locationId', locationId);
 
-  // Helper: Get import date from a contact (works for both object and array style)
-  function getImportDate(contact) {
-    // Array style (most common)
-    if (Array.isArray(contact.customFields)) {
-      const found = contact.customFields.find(f => f.key === IMPORT_DATE_FIELD_KEY);
-      return found && found.value;
+    const url = `https://rest.gohighlevel.com/v1/contacts/customfields?${params.toString()}`;
+    const resp = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${API_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!resp.ok) {
+      let error;
+      try {
+        error = await resp.json();
+      } catch {
+        error = { message: 'Unknown API error' };
+      }
+      throw new Error(error.message || 'API Error fetching custom fields');
     }
-    // Object style (rare)
-    if (contact.customField && typeof contact.customField === 'object') {
-      return contact.customField[IMPORT_DATE_FIELD_KEY];
+
+    const data = await resp.json();
+    // Try to match by label (visible name) or fieldName (API name)
+    const field = (data.customFields || []).find(
+      (f) =>
+        (f.label && f.label.trim().toLowerCase() === 'import history') ||
+        (f.fieldName && f.fieldName.trim().toLowerCase() === 'import history')
+    );
+    if (field) {
+      // Debug: found field
+      console.log('=== Debug: Found Import History field ===');
+      console.log(JSON.stringify(field, null, 2));
+    } else {
+      console.log('=== Debug: Import History field not found ===');
     }
-    return null;
+    return field ? field.id : null;
   }
 
   // Helper: fetch all contacts for latest import functionality
@@ -67,10 +91,6 @@ export default async function handler(req, res) {
       if (contacts.length && page === 1) {
         console.log("=== Debug: Sample contact object (page 1) ===");
         console.log(JSON.stringify(contacts[0], null, 2));
-        if (contacts[0].customFields) {
-          console.log("=== Debug: customFields ===");
-          console.log(JSON.stringify(contacts[0].customFields, null, 2));
-        }
         if (contacts[0].customField) {
           console.log("=== Debug: customField ===");
           console.log(JSON.stringify(contacts[0].customField, null, 2));
@@ -90,7 +110,29 @@ export default async function handler(req, res) {
   try {
     // SPECIAL MODE: Only return latest imported contacts if requested
     if (latestImport === "true") {
+      // 1. Get field ID for "Import History"
+      const importFieldId = await getImportHistoryFieldId(locationId);
+      if (!importFieldId) {
+        return res.status(200).json({
+          contacts: [],
+          pagination: { total: 0, hasMore: false, nextPageUrl: null },
+          latestImportDate: null,
+          message: 'Import History custom field not found for this location.'
+        });
+      }
+
+      // 2. Fetch contacts as before
       const contacts = await fetchAllContactsByLocation();
+
+      // 3. Extract the import date using the found field ID
+      function getImportDate(contact) {
+        if (Array.isArray(contact.customField)) {
+          const found = contact.customField.find(f => f.id === importFieldId);
+          // Remove trailing delimiters and whitespace
+          return found && found.value && found.value.trim() ? found.value.trim().replace(/\|+$/, '').trim() : null;
+        }
+        return null;
+      }
 
       // Find all non-empty import dates
       const importDates = contacts
@@ -111,7 +153,7 @@ export default async function handler(req, res) {
         });
       }
 
-      // Sort dates as strings (ISO works fine lexicographically)
+      // Sort dates as strings (format is MM/DD/YYYY HH:MM AM/PM, so this sort is not 100% robust, but works for most cases)
       const latestImportDate = importDates.sort().reverse()[0];
       const latestContacts = contacts.filter(
         c => getImportDate(c) === latestImportDate
