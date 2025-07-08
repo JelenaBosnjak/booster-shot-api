@@ -328,10 +328,6 @@ export default function ContactList() {
         if (contact.id) newSet.add(contact.id);
       });
       setSelectedContacts(newSet);
-
-      // Optionally, you could show a message:
-      // alert(`Selected ${data.contacts.length} contacts from latest import batch (${data.latestImportDate || "unknown date"}).`);
-      // <-- The above line is removed as requested
     } catch (err) {
       alert("Failed to select latest imported contacts.");
     } finally {
@@ -490,8 +486,36 @@ export default function ContactList() {
       <h2 style={{marginTop: 0, marginBottom: 20, color: COLOR_PRIMARY, fontWeight: 800, fontFamily: FONT_FAMILY}}>
         Before launching Select Campaign Contacts
       </h2>
-      <div style={{display: "flex", gap: 14, marginBottom: 12, alignItems: "flex-end"}}>
-        <div style={{display: "flex", flexDirection: "column", gap: 6}}>
+      <div style={{display: "flex", alignItems: "flex-end", gap: 14, marginBottom: 12}}>
+        <button style={{
+          background: COLOR_PRIMARY, color: COLOR_WHITE, border: "none",
+          borderRadius: 6, padding: "7px 19px", fontWeight: 700, cursor: "pointer", fontFamily: FONT_FAMILY,
+          minWidth: 110
+        }} onClick={toggleSelectAll}>
+          {filteredContacts().length > 0 && filteredContacts().every(c => selectedContacts.has(c.id))
+            ? 'Unselect All' : 'Select All'}
+        </button>
+        <button
+          onClick={handleSelectLatestImportedContacts}
+          disabled={latestImportLoading}
+          style={{
+            marginTop: 0,
+            background: "#e4f2dd",
+            color: "#22723e",
+            border: "none",
+            borderRadius: 7,
+            padding: "8px 0",
+            fontWeight: 800,
+            fontSize: 14,
+            width: 200,
+            cursor: latestImportLoading ? "not-allowed" : "pointer",
+            boxShadow: latestImportLoading ? "none" : "0 1px 4px 0 rgba(60,140,80,0.06)",
+            transition: "background 0.13s"
+          }}
+        >
+          {latestImportLoading ? "Selecting..." : "Select Latest Import"}
+        </button>
+        <div style={{display: "flex", flex: 1, gap: 8, alignItems: "flex-end", justifyContent: "flex-end"}}>
           <select
             value={selectedTag}
             onChange={e => setSelectedTag(e.target.value)}
@@ -509,41 +533,22 @@ export default function ContactList() {
               <option key={tag} value={tag}>{tag}</option>
             ))}
           </select>
-          <button
-            onClick={handleSelectLatestImportedContacts}
-            disabled={latestImportLoading}
+          <input
+            type="text"
+            placeholder="Search contacts by name, email, or phone..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
             style={{
-              marginTop: 0,
-              background: "#e4f2dd",
-              color: "#22723e",
-              border: "none",
-              borderRadius: 7,
-              padding: "8px 0",
-              fontWeight: 800,
-              fontSize: 14,
-              width: 200,
-              cursor: latestImportLoading ? "not-allowed" : "pointer",
-              boxShadow: latestImportLoading ? "none" : "0 1px 4px 0 rgba(60,140,80,0.06)",
-              transition: "background 0.13s"
+              flex: 1,
+              borderRadius: 8,
+              border: `1.5px solid ${COLOR_GRAY}`,
+              padding: 8,
+              fontSize: 15,
+              fontFamily: FONT_FAMILY,
+              minWidth: 180
             }}
-          >
-            {latestImportLoading ? "Selecting..." : "Select Latest Import"}
-          </button>
+          />
         </div>
-        <input
-          type="text"
-          placeholder="Search contacts by name, email, or phone..."
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
-          style={{
-            flex: 1,
-            borderRadius: 8,
-            border: `1.5px solid ${COLOR_GRAY}`,
-            padding: 8,
-            fontSize: 15,
-            fontFamily: FONT_FAMILY
-          }}
-        />
       </div>
       <div style={{
         maxHeight: 350, overflowY: "auto", border: `1.3px solid ${COLOR_GRAY}`,
@@ -588,13 +593,6 @@ export default function ContactList() {
         ))}
       </div>
       <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 8}}>
-        <button style={{
-          background: COLOR_PRIMARY, color: COLOR_WHITE, border: "none",
-          borderRadius: 6, padding: "7px 19px", fontWeight: 700, cursor: "pointer", fontFamily: FONT_FAMILY
-        }} onClick={toggleSelectAll}>
-          {filteredContacts().length > 0 && filteredContacts().every(c => selectedContacts.has(c.id))
-            ? 'Unselect All' : 'Select All'}
-        </button>
         <span style={{fontWeight: 600, color: COLOR_PRIMARY, fontSize: 15, fontFamily: FONT_FAMILY}}>Selected: {selectedContacts.size}</span>
       </div>
       {/* Pagination */}
