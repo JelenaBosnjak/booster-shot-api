@@ -197,43 +197,49 @@ export default function ContactList() {
   }, [campaign, boosterShotMessage, offers]);
 
   const loadPage = async (url, pageNumber, resetHistory = false) => {
-    setLoadingContacts(true);
-    setRateLimitError(null);
-    try {
-      const res = await fetch(url);
-      const data = await res.json();
+  setLoadingContacts(true);
+  setRateLimitError(null);
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
 
-      if (res.ok) {
-        setContacts(data.contacts || []);
-        setTotalCount(data.pagination?.total || 0);
-        setCurrentPage(pageNumber);
-        setNextPageUrl(data.pagination?.hasMore ? data.pagination.nextPageUrl : null);
-        setContactsLoaded(true);
+    if (res.ok) {
+      setContacts(data.contacts || []);
+      setTotalCount(data.pagination?.total || 0);
+      setCurrentPage(pageNumber);
+      setNextPageUrl(data.pagination?.hasMore ? data.pagination.nextPageUrl : null);
+      setContactsLoaded(true);
 
-        if (resetHistory) {
-          setPrevPages([]);
-        } else {
-          if (pageNumber > prevPages.length + 1) {
-            setPrevPages((prev) => [...prev, url]);
-          }
-        }
+      if (resetHistory) {
+        setPrevPages([]);
       } else {
-        alert('API error: ' + (data.error?.message || 'Unknown error'));
+        if (pageNumber > prevPages.length + 1) {
+          setPrevPages((prev) => [...prev, { url, page: pageNumber }]);
+        }
       }
-    } catch (error) {
-      console.error('Fetch Error:', error);
-      alert('Network error occurred');
-    } finally {
-      setLoadingContacts(false);
+    } else {
+      alert('API error: ' + (data.error?.message || 'Unknown error'));
     }
-  };
+  } catch (error) {
+    console.error('Fetch Error:', error);
+    alert('Network error occurred');
+  } finally {
+    setLoadingContacts(false);
+  }
+};
 
-  const handleLoadContacts = () => {
-    if (locationId) {
-      const initialUrl = `/api/get-contacts?locationId=${locationId}&limit=${limit}`;
-      loadPage(initialUrl, 1, true);
-    }
-  };
+const handleLoadContacts = () => {
+  setContacts([]);
+  setPrevPages([]); // Reset pagination history!
+  setCurrentPage(1);
+  setNextPageUrl(null);
+  setContactsLoaded(false);
+  setAllRecordsSelected(false);
+  if (locationId) {
+    const initialUrl = `/api/get-contacts?locationId=${locationId}&limit=${limit}`;
+    loadPage(initialUrl, 1, true);
+  }
+};
 
   const openContactsModal = () => {
     setContactsModal(true);
@@ -339,18 +345,20 @@ export default function ContactList() {
     }
   };
 
-  const handleNextPage = () => {
-    if (nextPageUrl) {
-      loadPage(nextPageUrl, currentPage + 1);
-    }
-  };
-  const handlePreviousPage = () => {
-    if (currentPage > 1 && prevPages[currentPage - 2]) {
-      const prevUrl = prevPages[currentPage - 2];
-      loadPage(prevUrl, currentPage - 1);
-      setPrevPages((prev) => prev.slice(0, currentPage - 2));
-    }
-  };
+const handleNextPage = () => {
+  if (nextPageUrl) {
+    setPrevPages(prev => [...prev, { url: nextPageUrl, page: currentPage + 1 }]);
+    loadPage(nextPageUrl, currentPage + 1);
+  }
+};
+
+const handlePreviousPage = () => {
+  if (currentPage > 1 && prevPages.length > 0) {
+    const prev = prevPages[prevPages.length - 1];
+    setPrevPages(prevPages.slice(0, -1)); // Remove last entry
+    loadPage(prev.url, currentPage - 1);
+  }
+};
 
   const handleOptimizeAI = async () => {
     if (!smsMessage) {
