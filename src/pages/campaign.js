@@ -486,6 +486,41 @@ export default function ContactList() {
       <h2 style={{marginTop: 0, marginBottom: 20, color: COLOR_PRIMARY, fontWeight: 800, fontFamily: FONT_FAMILY}}>
         Before launching Select Campaign Contacts
       </h2>
+      {/* Filter and search row above select buttons */}
+      <div style={{display: "flex", gap: 8, marginBottom: 10, alignItems: "flex-end"}}>
+        <select
+          value={selectedTag}
+          onChange={e => setSelectedTag(e.target.value)}
+          style={{
+            width: 200,
+            borderRadius: 8,
+            border: `1.5px solid ${COLOR_GRAY}`,
+            padding: 8,
+            fontSize: 15,
+            fontFamily: FONT_FAMILY
+          }}
+        >
+          <option value="">All Contacts</option>
+          {tags.map(tag => (
+            <option key={tag} value={tag}>{tag}</option>
+          ))}
+        </select>
+        <input
+          type="text"
+          placeholder="Search contacts by name, email, or phone..."
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          style={{
+            flex: 1,
+            borderRadius: 8,
+            border: `1.5px solid ${COLOR_GRAY}`,
+            padding: 8,
+            fontSize: 15,
+            fontFamily: FONT_FAMILY,
+            minWidth: 180
+          }}
+        />
+      </div>
       <div style={{display: "flex", alignItems: "flex-end", gap: 14, marginBottom: 12}}>
         <button style={{
           background: COLOR_PRIMARY, color: COLOR_WHITE, border: "none",
@@ -515,40 +550,6 @@ export default function ContactList() {
         >
           {latestImportLoading ? "Selecting..." : "Select Latest Import"}
         </button>
-        <div style={{display: "flex", flex: 1, gap: 8, alignItems: "flex-end", justifyContent: "flex-end"}}>
-          <select
-            value={selectedTag}
-            onChange={e => setSelectedTag(e.target.value)}
-            style={{
-              width: 200,
-              borderRadius: 8,
-              border: `1.5px solid ${COLOR_GRAY}`,
-              padding: 8,
-              fontSize: 15,
-              fontFamily: FONT_FAMILY
-            }}
-          >
-            <option value="">All Contacts</option>
-            {tags.map(tag => (
-              <option key={tag} value={tag}>{tag}</option>
-            ))}
-          </select>
-          <input
-            type="text"
-            placeholder="Search contacts by name, email, or phone..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            style={{
-              flex: 1,
-              borderRadius: 8,
-              border: `1.5px solid ${COLOR_GRAY}`,
-              padding: 8,
-              fontSize: 15,
-              fontFamily: FONT_FAMILY,
-              minWidth: 180
-            }}
-          />
-        </div>
       </div>
       <div style={{
         maxHeight: 350, overflowY: "auto", border: `1.3px solid ${COLOR_GRAY}`,
