@@ -18,7 +18,6 @@ const FONT_FAMILY = '"Inter", "Lato", "Segoe UI", "Arial", sans-serif';
 const WEB_APP_URL =
   "https://script.google.com/macros/s/AKfycbzkVfD4fEUHuGryVKiRR_SKtWeyMFCkxTyGeAKPlaY0yR5XJq_0xuYYEbA6v3odZeMKHA/exec";
 
-// Simple Modal implementation (no library needed)
 function Modal({ open, onClose, children }) {
   if (!open) return null;
   return (
@@ -654,45 +653,48 @@ export default function ContactList() {
             ))}
           </tbody>
         </table>
-        {/* Select all records banner */}
+        {/* Select all records banner and summary */}
         {isAllOnPageSelected() && !allRecordsSelected && filteredContacts().length > 0 && (
-          <div style={{
-            background: "#f5f5f5",
-            padding: "12px 18px",
-            borderTop: `1px solid ${COLOR_GRAY}`,
-            color: COLOR_PRIMARY,
-            fontWeight: 600,
-            fontFamily: FONT_FAMILY,
-            fontSize: 15,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between"
-          }}>
-            <span>
-              You have selected {filteredContacts().length} records.{" "}
+          <div>
+            <div style={{
+              background: "#f5f5f5",
+              padding: "12px 18px",
+              borderTop: `1px solid ${COLOR_GRAY}`,
+              color: COLOR_PRIMARY,
+              fontWeight: 600,
+              fontFamily: FONT_FAMILY,
+              fontSize: 15,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between"
+            }}>
+              <span>
+                You have selected {filteredContacts().length} records.
+                {" "}
+                {totalCount > filteredContacts().length && (
+                  <>Select all {totalCount} records?</>
+                )}
+              </span>
               {totalCount > filteredContacts().length && (
-                <>Select all {totalCount} records?</>
+                <button
+                  onClick={handleSelectAllRecords}
+                  style={{
+                    marginLeft: 16,
+                    background: COLOR_CORAL,
+                    color: COLOR_WHITE,
+                    border: "none",
+                    borderRadius: 5,
+                    padding: "6px 18px",
+                    fontWeight: 700,
+                    fontSize: 15,
+                    fontFamily: FONT_FAMILY,
+                    cursor: "pointer"
+                  }}
+                >
+                  Select all {totalCount} records
+                </button>
               )}
-            </span>
-            {totalCount > filteredContacts().length && (
-              <button
-                onClick={handleSelectAllRecords}
-                style={{
-                  marginLeft: 16,
-                  background: COLOR_CORAL,
-                  color: COLOR_WHITE,
-                  border: "none",
-                  borderRadius: 5,
-                  padding: "6px 18px",
-                  fontWeight: 700,
-                  fontSize: 15,
-                  fontFamily: FONT_FAMILY,
-                  cursor: "pointer"
-                }}
-              >
-                Select all {totalCount} records
-              </button>
-            )}
+            </div>
           </div>
         )}
         {/* All records selected banner */}
@@ -710,9 +712,6 @@ export default function ContactList() {
             All {totalCount} contacts are selected.
           </div>
         )}
-      </div>
-      <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 8}}>
-        <span style={{fontWeight: 600, color: COLOR_PRIMARY, fontSize: 15, fontFamily: FONT_FAMILY}}>Selected: {allRecordsSelected ? totalCount : selectedContacts.size}</span>
       </div>
       {/* Pagination */}
       <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16}}>
