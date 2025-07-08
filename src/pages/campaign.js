@@ -99,14 +99,13 @@ export default function ContactList() {
   const [campaignLoading, setCampaignLoading] = useState(false);
   const [contactsModal, setContactsModal] = useState(false);
 
-  // New: for "Select Latest Imported Contacts"
+  // Latest Import
   const [latestImportLoading, setLatestImportLoading] = useState(false);
-  const [latestImportUsed, setLatestImportUsed] = useState(false); // Prevent repeated API calls
+  const [latestImportUsed, setLatestImportUsed] = useState(false);
 
   // Debug
   const [debugInfo, setDebugInfo] = useState({});
 
-  // ---- locationId detection (robust + localStorage fallback) ----
   useEffect(() => {
     function getLocationId() {
       if (router.query && router.query.locationId) return router.query.locationId;
@@ -139,7 +138,6 @@ export default function ContactList() {
       }
       return null;
     }
-    // Use localStorage only if not already set, to persist selection even on back navigation
     const existing = localStorage.getItem("locationId");
     const id = getLocationId();
     if (id && (!existing || existing !== id)) {
@@ -152,7 +150,6 @@ export default function ContactList() {
     }
   }, [router.asPath]);
 
-  // Tags
   useEffect(() => {
     async function fetchTags() {
       if (!locationId) return;
@@ -168,7 +165,6 @@ export default function ContactList() {
     fetchTags();
   }, [locationId]);
 
-  // Offers
   useEffect(() => {
     fetch(WEB_APP_URL)
       .then(res => res.json())
@@ -182,7 +178,6 @@ export default function ContactList() {
       });
   }, []);
 
-  // Campaign names per category
   useEffect(() => {
     if (!boosterShotMessage) {
       setCampaignNames([]);
@@ -196,7 +191,6 @@ export default function ContactList() {
     setSmsMessage('');
   }, [boosterShotMessage, offers]);
 
-  // SMS message preview per campaign
   useEffect(() => {
     if (!campaign) {
       setSmsMessage('');
@@ -206,7 +200,6 @@ export default function ContactList() {
     setSmsMessage(offer?.Text_Preview || '');
   }, [campaign, boosterShotMessage, offers]);
 
-  // Contact loading
   const loadPage = async (url, pageNumber, resetHistory = false) => {
     setLoadingContacts(true);
     setRateLimitError(null);
@@ -255,13 +248,11 @@ export default function ContactList() {
     }
   };
 
-  // Modal open - load contacts if not loaded
   const openContactsModal = () => {
     setContactsModal(true);
     if (!contactsLoaded && !loadingContacts) handleLoadContacts();
   };
 
-  // Filter contacts
   const filteredContacts = () => {
     let filtered = contacts;
     if (selectedTag) {
@@ -281,7 +272,6 @@ export default function ContactList() {
     return filtered;
   };
 
-  // Select all/none (for current page)
   const toggleSelectAll = () => {
     const filtered = filteredContacts();
     const idsOnPage = filtered.map(c => c.id);
@@ -301,7 +291,6 @@ export default function ContactList() {
     setSelectedContacts(newSet);
   };
 
-  // Select latest imported contacts
   const handleSelectLatestImportedContacts = async () => {
     if (!locationId) {
       alert('Location ID not found.');
@@ -338,7 +327,6 @@ export default function ContactList() {
     }
   };
 
-  // Pagination in modal
   const handleNextPage = () => {
     if (nextPageUrl) {
       loadPage(nextPageUrl, currentPage + 1);
@@ -352,7 +340,6 @@ export default function ContactList() {
     }
   };
 
-  // AI
   const handleOptimizeAI = async () => {
     if (!smsMessage) {
       alert("Please enter a message to optimize.");
@@ -380,7 +367,6 @@ export default function ContactList() {
     }
   };
 
-  // Test
   const handleSendTest = async () => {
     if (!testPhone) {
       alert("Enter a phone number.");
@@ -410,7 +396,6 @@ export default function ContactList() {
     }
   };
 
-  // Launch
   const handleLaunchCampaign = async () => {
     if (selectedContacts.size === 0) {
       alert('Please select at least one contact.');
@@ -479,11 +464,10 @@ export default function ContactList() {
     }
   };
 
-  // Character count
   const getCharCount = () => smsMessage.length;
   const getSMSCount = () => Math.ceil(smsMessage.length / 160);
 
-  // Modal - Contact selection UI
+  // Modal UI - Contact table
   const contactModalUI = (
     <div>
       <h2 style={{marginTop: 0, marginBottom: 20, color: COLOR_PRIMARY, fontWeight: 800, fontFamily: FONT_FAMILY}}>
@@ -555,47 +539,75 @@ export default function ContactList() {
           {latestImportLoading ? "Selecting..." : latestImportUsed ? "Latest Import Selected" : "Select Latest Import"}
         </button>
       </div>
+      {/* Contact table */}
       <div style={{
         maxHeight: 350, overflowY: "auto", border: `1.3px solid ${COLOR_GRAY}`,
-        borderRadius: 8, padding: 6, background: "#f6f6fa", marginBottom: 10
+        borderRadius: 8, padding: 0, background: "#f6f6fa", marginBottom: 10
       }}>
-        {loadingContacts && <div style={{padding: 18, textAlign: "center"}}>Loading contacts...</div>}
-        {!loadingContacts && filteredContacts().length === 0 &&
-          <div style={{padding: 18, textAlign: "center", color: "#999"}}>No contacts found.</div>}
-        {filteredContacts().map((contact) => (
-          <div key={contact.id} style={{
-            display: 'flex', alignItems: 'center', padding: "8px 2px", borderBottom: `1px solid ${COLOR_GRAY}`,
-            background: selectedContacts.has(contact.id) ? COLOR_CORAL_LIGHT : "inherit",
-            fontFamily: FONT_FAMILY
-          }}>
-            <input
-              type="checkbox"
-              checked={selectedContacts.has(contact.id)}
-              onChange={() => toggleSelectContact(contact.id)}
-              style={{
-                accentColor: COLOR_CORAL, marginRight: 12, width: 20, height: 20, cursor: "pointer"
-              }}
-            />
-            <div>
-              <div style={{fontWeight: 700, fontSize: 15, fontFamily: FONT_FAMILY}}>
-                {contact.firstName || ''} {contact.lastName || ''}
-              </div>
-              <div style={{color: '#8b8b99', fontSize: 13, fontFamily: FONT_FAMILY}}>{contact.email || ''}</div>
-              <div style={{color: '#8b8b99', fontSize: 13, fontFamily: FONT_FAMILY}}>{contact.phone || ''}</div>
-              <div style={{ fontSize: 12, color: COLOR_CORAL, marginTop: 2 }}>
-                {Array.isArray(contact.tags) && contact.tags.length > 0
-                  ? contact.tags.map(tag => (
-                    <span key={tag} style={{
-                      display: 'inline-block', fontSize: 13, color: COLOR_CORAL,
-                      background: COLOR_CORAL_LIGHTER, borderRadius: 4, padding: '2px 8px', marginRight: 6,
-                      fontFamily: FONT_FAMILY
-                    }}>{tag}</span>
-                  ))
-                  : ''}
-              </div>
-            </div>
-          </div>
-        ))}
+        <table style={{width: "100%", borderCollapse: "separate", borderSpacing: 0, fontFamily: FONT_FAMILY}}>
+          <thead>
+            <tr style={{
+              background: "#f0f2f8",
+              color: COLOR_DARK,
+              fontWeight: 900,
+              fontSize: 15,
+              fontFamily: FONT_FAMILY
+            }}>
+              <th style={{width: 38, padding: 8, borderBottom: `1px solid ${COLOR_GRAY}`}}></th>
+              <th style={{textAlign: "left", padding: 8, borderBottom: `1px solid ${COLOR_GRAY}`}}>Name</th>
+              <th style={{textAlign: "left", padding: 8, borderBottom: `1px solid ${COLOR_GRAY}`}}>Phone</th>
+              <th style={{textAlign: "left", padding: 8, borderBottom: `1px solid ${COLOR_GRAY}`}}>Email</th>
+              <th style={{textAlign: "left", padding: 8, borderBottom: `1px solid ${COLOR_GRAY}`}}>Tags</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loadingContacts && (
+              <tr>
+                <td colSpan={5} style={{padding: 18, textAlign: "center"}}>Loading contacts...</td>
+              </tr>
+            )}
+            {!loadingContacts && filteredContacts().length === 0 && (
+              <tr>
+                <td colSpan={5} style={{padding: 18, textAlign: "center", color: "#999"}}>No contacts found.</td>
+              </tr>
+            )}
+            {!loadingContacts && filteredContacts().map((contact) => (
+              <tr key={contact.id}
+                  style={{
+                    background: selectedContacts.has(contact.id) ? COLOR_CORAL_LIGHT : "inherit",
+                    borderBottom: `1px solid ${COLOR_GRAY}`,
+                    fontFamily: FONT_FAMILY
+                  }}>
+                <td style={{padding: 8, textAlign: "center"}}>
+                  <input
+                    type="checkbox"
+                    checked={selectedContacts.has(contact.id)}
+                    onChange={() => toggleSelectContact(contact.id)}
+                    style={{
+                      accentColor: COLOR_CORAL, width: 20, height: 20, cursor: "pointer"
+                    }}
+                  />
+                </td>
+                <td style={{padding: 8, fontWeight: 600, fontSize: 15}}>
+                  {contact.firstName || ''} {contact.lastName || ''}
+                </td>
+                <td style={{padding: 8, color: "#8b8b99", fontSize: 14}}>{contact.phone || ''}</td>
+                <td style={{padding: 8, color: "#8b8b99", fontSize: 14}}>{contact.email || ''}</td>
+                <td style={{padding: 8}}>
+                  {Array.isArray(contact.tags) && contact.tags.length > 0
+                    ? contact.tags.map(tag => (
+                      <span key={tag} style={{
+                        display: 'inline-block', fontSize: 13, color: COLOR_CORAL,
+                        background: COLOR_CORAL_LIGHTER, borderRadius: 4, padding: '2px 8px', marginRight: 6,
+                        fontFamily: FONT_FAMILY
+                      }}>{tag}</span>
+                    ))
+                    : ''}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
       <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 8}}>
         <span style={{fontWeight: 600, color: COLOR_PRIMARY, fontSize: 15, fontFamily: FONT_FAMILY}}>Selected: {selectedContacts.size}</span>
