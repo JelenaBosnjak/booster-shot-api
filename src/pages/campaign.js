@@ -103,6 +103,9 @@ export default function ContactList() {
   const [latestImportLoading, setLatestImportLoading] = useState(false);
   const [latestImportUsed, setLatestImportUsed] = useState(false);
 
+  // Select all records (across all pages)
+  const [allRecordsSelected, setAllRecordsSelected] = useState(false);
+
   // Debug
   const [debugInfo, setDebugInfo] = useState({});
 
@@ -272,22 +275,48 @@ export default function ContactList() {
     return filtered;
   };
 
-  const toggleSelectAll = () => {
+  // Select all contacts on page (checkbox in header)
+  const isAllOnPageSelected = () => {
+    const filtered = filteredContacts();
+    return (
+      filtered.length > 0 &&
+      filtered.every(c => selectedContacts.has(c.id))
+    );
+  };
+
+  const handleHeaderCheckboxChange = () => {
     const filtered = filteredContacts();
     const idsOnPage = filtered.map(c => c.id);
     const newSet = new Set(selectedContacts);
-    const allSelected = idsOnPage.every(id => newSet.has(id));
-    if (!allSelected) {
+    if (!isAllOnPageSelected()) {
       idsOnPage.forEach(id => newSet.add(id));
     } else {
       idsOnPage.forEach(id => newSet.delete(id));
+      setAllRecordsSelected(false);
     }
     setSelectedContacts(newSet);
   };
 
+  // "Select all X records" logic
+  const handleSelectAllRecords = () => {
+    setAllRecordsSelected(true);
+    // This is just a flag for UX, actual selection for all contacts should be handled on server when launching campaign.
+  };
+
+  // Clicking "Unselect All" (checkbox in header)
+  const handleUnselectAll = () => {
+    setSelectedContacts(new Set());
+    setAllRecordsSelected(false);
+  };
+
   const toggleSelectContact = (id) => {
     const newSet = new Set(selectedContacts);
-    newSet.has(id) ? newSet.delete(id) : newSet.add(id);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+      setAllRecordsSelected(false);
+    } else {
+      newSet.add(id);
+    }
     setSelectedContacts(newSet);
   };
 
@@ -397,16 +426,23 @@ export default function ContactList() {
   };
 
   const handleLaunchCampaign = async () => {
-    if (selectedContacts.size === 0) {
+    if ((!allRecordsSelected && selectedContacts.size === 0) || (allRecordsSelected && totalCount === 0)) {
       alert('Please select at least one contact.');
       return;
     }
     setCampaignLoading(true);
     setRateLimitError(null);
     try {
-      const confirmed = window.confirm(
-        `About to tag ${selectedContacts.size} contacts with "booster shot".\n\nThis may take several minutes for large batches. Continue?`
-      );
+      let confirmed = false;
+      if (allRecordsSelected) {
+        confirmed = window.confirm(
+          `About to tag ALL ${totalCount} contacts with "booster shot".\n\nThis may take several minutes for large batches. Continue?`
+        );
+      } else {
+        confirmed = window.confirm(
+          `About to tag ${selectedContacts.size} contacts with "booster shot".\n\nThis may take several minutes for large batches. Continue?`
+        );
+      }
       if (!confirmed) return;
 
       const response = await fetch('/api/add-tag', {
@@ -415,7 +451,7 @@ export default function ContactList() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          contactIds: Array.from(selectedContacts),
+          contactIds: allRecordsSelected ? "ALL" : Array.from(selectedContacts),
           tag: 'booster shot',
           boosterShotMessage: smsMessage,
           boosterCampaignName: campaign,
@@ -455,6 +491,7 @@ export default function ContactList() {
       setContactsModal(false);
       setContactsLoaded(false);
       setSelectedContacts(new Set());
+      setAllRecordsSelected(false);
 
     } catch (err) {
       console.error(err);
@@ -513,9 +550,8 @@ export default function ContactList() {
           background: COLOR_PRIMARY, color: COLOR_WHITE, border: "none",
           borderRadius: 6, padding: "7px 19px", fontWeight: 700, cursor: "pointer", fontFamily: FONT_FAMILY,
           minWidth: 110
-        }} onClick={toggleSelectAll}>
-          {filteredContacts().length > 0 && filteredContacts().every(c => selectedContacts.has(c.id))
-            ? 'Unselect All' : 'Select All'}
+        }} onClick={isAllOnPageSelected() ? handleUnselectAll : handleHeaderCheckboxChange}>
+          {isAllOnPageSelected() ? "Unselect All" : "Select All"}
         </button>
         <div style={{flex: 1}} />
         <button
@@ -553,7 +589,17 @@ export default function ContactList() {
               fontSize: 15,
               fontFamily: FONT_FAMILY
             }}>
-              <th style={{width: 38, padding: 8, borderBottom: `1px solid ${COLOR_GRAY}`}}></th>
+              <th style={{width: 38, padding: 8, borderBottom: `1px solid ${COLOR_GRAY}`}}>
+                <input
+                  type="checkbox"
+                  checked={isAllOnPageSelected()}
+                  indeterminate={selectedContacts.size > 0 && !isAllOnPageSelected()}
+                  onChange={handleHeaderCheckboxChange}
+                  style={{
+                    accentColor: COLOR_CORAL, width: 20, height: 20, cursor: "pointer"
+                  }}
+                />
+              </th>
               <th style={{textAlign: "left", padding: 8, borderBottom: `1px solid ${COLOR_GRAY}`}}>Name</th>
               <th style={{textAlign: "left", padding: 8, borderBottom: `1px solid ${COLOR_GRAY}`}}>Phone</th>
               <th style={{textAlign: "left", padding: 8, borderBottom: `1px solid ${COLOR_GRAY}`}}>Email</th>
@@ -608,9 +654,65 @@ export default function ContactList() {
             ))}
           </tbody>
         </table>
+        {/* Select all records banner */}
+        {isAllOnPageSelected() && !allRecordsSelected && filteredContacts().length > 0 && (
+          <div style={{
+            background: "#f5f5f5",
+            padding: "12px 18px",
+            borderTop: `1px solid ${COLOR_GRAY}`,
+            color: COLOR_PRIMARY,
+            fontWeight: 600,
+            fontFamily: FONT_FAMILY,
+            fontSize: 15,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between"
+          }}>
+            <span>
+              You have selected {filteredContacts().length} records.{" "}
+              {totalCount > filteredContacts().length && (
+                <>Select all {totalCount} records?</>
+              )}
+            </span>
+            {totalCount > filteredContacts().length && (
+              <button
+                onClick={handleSelectAllRecords}
+                style={{
+                  marginLeft: 16,
+                  background: COLOR_CORAL,
+                  color: COLOR_WHITE,
+                  border: "none",
+                  borderRadius: 5,
+                  padding: "6px 18px",
+                  fontWeight: 700,
+                  fontSize: 15,
+                  fontFamily: FONT_FAMILY,
+                  cursor: "pointer"
+                }}
+              >
+                Select all {totalCount} records
+              </button>
+            )}
+          </div>
+        )}
+        {/* All records selected banner */}
+        {allRecordsSelected && (
+          <div style={{
+            background: "#e4f2dd",
+            padding: "12px 18px",
+            borderTop: `1px solid #b4deb1`,
+            color: "#22723e",
+            fontWeight: 700,
+            fontFamily: FONT_FAMILY,
+            fontSize: 15,
+            textAlign: "center"
+          }}>
+            All {totalCount} contacts are selected.
+          </div>
+        )}
       </div>
       <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 8}}>
-        <span style={{fontWeight: 600, color: COLOR_PRIMARY, fontSize: 15, fontFamily: FONT_FAMILY}}>Selected: {selectedContacts.size}</span>
+        <span style={{fontWeight: 600, color: COLOR_PRIMARY, fontSize: 15, fontFamily: FONT_FAMILY}}>Selected: {allRecordsSelected ? totalCount : selectedContacts.size}</span>
       </div>
       {/* Pagination */}
       <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16}}>
@@ -638,7 +740,10 @@ export default function ContactList() {
       </div>
       <div style={{display: "flex", justifyContent: "flex-end", gap: 10}}>
         <button
-          onClick={() => setContactsModal(false)}
+          onClick={() => {
+            setContactsModal(false);
+            setAllRecordsSelected(false);
+          }}
           style={{
             padding: "10px 30px", borderRadius: 8, fontWeight: 700,
             background: "#eee", border: "none", color: COLOR_DARK, cursor: "pointer", fontFamily: FONT_FAMILY
@@ -646,15 +751,15 @@ export default function ContactList() {
         >Cancel</button>
         <button
           onClick={handleLaunchCampaign}
-          disabled={campaignLoading || selectedContacts.size === 0 || !!rateLimitError}
+          disabled={campaignLoading || (!allRecordsSelected && selectedContacts.size === 0) || !!rateLimitError}
           style={{
             padding: "10px 30px", borderRadius: 8, fontWeight: 700,
-            background: campaignLoading || selectedContacts.size === 0 || !!rateLimitError ? "#ecb6b2" : COLOR_CORAL,
-            color: COLOR_WHITE, border: "none", cursor: campaignLoading || selectedContacts.size === 0 || !!rateLimitError ? "not-allowed" : "pointer",
+            background: campaignLoading || (!allRecordsSelected && selectedContacts.size === 0) || !!rateLimitError ? "#ecb6b2" : COLOR_CORAL,
+            color: COLOR_WHITE, border: "none", cursor: campaignLoading || (!allRecordsSelected && selectedContacts.size === 0) || !!rateLimitError ? "not-allowed" : "pointer",
             fontFamily: FONT_FAMILY
           }}
         >
-          {campaignLoading ? 'Launching...' : `🎯 Launch Campaign (${selectedContacts.size})`}
+          {campaignLoading ? 'Launching...' : `🎯 Launch Campaign (${allRecordsSelected ? totalCount : selectedContacts.size})`}
         </button>
       </div>
       {rateLimitError && (
