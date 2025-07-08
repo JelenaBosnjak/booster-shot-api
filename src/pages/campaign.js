@@ -308,7 +308,6 @@ export default function ContactList() {
     }
     setLatestImportLoading(true);
     try {
-      // Updated to call the new query param for latest import in get-contacts.js!
       const res = await fetch(`/api/get-contacts?locationId=${locationId}&latestImport=true`);
       const data = await res.json();
 
@@ -331,7 +330,8 @@ export default function ContactList() {
       setSelectedContacts(newSet);
 
       // Optionally, you could show a message:
-      alert(`Selected ${data.contacts.length} contacts from latest import batch (${data.latestImportDate || "unknown date"}).`);
+      // alert(`Selected ${data.contacts.length} contacts from latest import batch (${data.latestImportDate || "unknown date"}).`);
+      // <-- The above line is removed as requested
     } catch (err) {
       alert("Failed to select latest imported contacts.");
     } finally {
