@@ -210,13 +210,14 @@ export default function ContactList() {
       setNextPageUrl(data.pagination?.hasMore ? data.pagination.nextPageUrl : null);
       setContactsLoaded(true);
 
-      if (resetHistory) {
-        setPrevPages([]);
-      } else {
-        if (pageNumber > prevPages.length + 1) {
-  setPrevPages((prev) => [...prev, { url, page: pageNumber }]);
+if (resetHistory) {
+  setPrevPages([]);
+} else {
+  // Only add to prevPages if not on the first page
+  if (pageNumber > 1) {
+    setPrevPages(prev => [...prev, { url, page: pageNumber }]);
+  }
 }
-      }
     } else {
       alert('API error: ' + (data.error?.message || 'Unknown error'));
     }
@@ -356,7 +357,7 @@ const handlePreviousPage = () => {
   if (currentPage > 1 && prevPages.length > 0) {
     const prev = prevPages[prevPages.length - 1];
     setPrevPages(prevPages.slice(0, -1)); // Remove last entry
-    loadPage(prev.url, currentPage - 1);
+    loadPage(prev.url, prev.page);
   }
 };
 
