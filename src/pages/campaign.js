@@ -101,6 +101,7 @@ export default function ContactList() {
 
   // New: for "Select Latest Imported Contacts"
   const [latestImportLoading, setLatestImportLoading] = useState(false);
+  const [latestImportUsed, setLatestImportUsed] = useState(false); // Prevent repeated API calls
 
   // Debug
   const [debugInfo, setDebugInfo] = useState({});
@@ -328,6 +329,8 @@ export default function ContactList() {
         if (contact.id) newSet.add(contact.id);
       });
       setSelectedContacts(newSet);
+
+      setLatestImportUsed(true); // Disable the button after use
     } catch (err) {
       alert("Failed to select latest imported contacts.");
     } finally {
@@ -530,25 +533,26 @@ export default function ContactList() {
           {filteredContacts().length > 0 && filteredContacts().every(c => selectedContacts.has(c.id))
             ? 'Unselect All' : 'Select All'}
         </button>
+        <div style={{flex: 1}} />
         <button
           onClick={handleSelectLatestImportedContacts}
-          disabled={latestImportLoading}
+          disabled={latestImportLoading || latestImportUsed}
           style={{
             marginTop: 0,
-            background: "#e4f2dd",
-            color: "#22723e",
+            background: latestImportLoading || latestImportUsed ? "#e5e7eb" : "#e4f2dd",
+            color: latestImportLoading || latestImportUsed ? "#888" : "#22723e",
             border: "none",
             borderRadius: 7,
             padding: "8px 0",
             fontWeight: 800,
             fontSize: 14,
             width: 200,
-            cursor: latestImportLoading ? "not-allowed" : "pointer",
-            boxShadow: latestImportLoading ? "none" : "0 1px 4px 0 rgba(60,140,80,0.06)",
+            cursor: latestImportLoading || latestImportUsed ? "not-allowed" : "pointer",
+            boxShadow: latestImportLoading || latestImportUsed ? "none" : "0 1px 4px 0 rgba(60,140,80,0.06)",
             transition: "background 0.13s"
           }}
         >
-          {latestImportLoading ? "Selecting..." : "Select Latest Import"}
+          {latestImportLoading ? "Selecting..." : latestImportUsed ? "Latest Import Selected" : "Select Latest Import"}
         </button>
       </div>
       <div style={{
