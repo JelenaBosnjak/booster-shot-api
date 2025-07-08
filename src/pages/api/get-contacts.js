@@ -31,6 +31,7 @@ export default async function handler(req, res) {
     let allContacts = [];
     let nextPageToken = null;
     let nextPageId = null;
+    let page = 1;
 
     do {
       const params = new URLSearchParams();
@@ -54,6 +55,7 @@ export default async function handler(req, res) {
         } catch {
           error = { message: 'Unknown API error' };
         }
+        console.error('GHL API Error:', error);
         throw new Error(error.message || 'API Error');
       }
 
@@ -61,10 +63,27 @@ export default async function handler(req, res) {
       const contacts = data.contacts || [];
       allContacts.push(...contacts);
 
+      // Debug: log the first contact and page info
+      if (contacts.length && page === 1) {
+        console.log("=== Debug: Sample contact object (page 1) ===");
+        console.log(JSON.stringify(contacts[0], null, 2));
+        if (contacts[0].customFields) {
+          console.log("=== Debug: customFields ===");
+          console.log(JSON.stringify(contacts[0].customFields, null, 2));
+        }
+        if (contacts[0].customField) {
+          console.log("=== Debug: customField ===");
+          console.log(JSON.stringify(contacts[0].customField, null, 2));
+        }
+      }
+
       nextPageToken = data.meta?.startAfter || null;
       nextPageId = data.meta?.startAfterId || null;
+      page += 1;
     } while (nextPageToken && nextPageId);
 
+    // Debug: total contacts fetched
+    console.log(`Fetched total ${allContacts.length} contacts.`);
     return allContacts;
   }
 
@@ -78,7 +97,12 @@ export default async function handler(req, res) {
         .map(getImportDate)
         .filter(Boolean);
 
+      // Debug: show all found import dates
+      console.log("=== Debug: Found import dates ===");
+      console.log(importDates);
+
       if (importDates.length === 0) {
+        console.log("No imported contacts with an import date field found.");
         return res.status(200).json({
           contacts: [],
           pagination: { total: 0, hasMore: false, nextPageUrl: null },
@@ -92,6 +116,10 @@ export default async function handler(req, res) {
       const latestContacts = contacts.filter(
         c => getImportDate(c) === latestImportDate
       );
+
+      // Debug: output for latest import date and contact count
+      console.log(`=== Debug: Latest import date found: ${latestImportDate}`);
+      console.log(`=== Debug: Number of contacts with latest import date: ${latestContacts.length}`);
 
       return res.status(200).json({
         contacts: latestContacts,
@@ -129,6 +157,9 @@ export default async function handler(req, res) {
 
     const data = await response.json();
     const meta = data.meta || {};
+
+    // Debug: log number of contacts returned in paginated mode
+    console.log(`=== Debug: Contacts returned in paginated request: ${data.contacts ? data.contacts.length : 0}`);
 
     // Pagination logic
     const hasMore = !!(meta.startAfter && meta.startAfterId);
