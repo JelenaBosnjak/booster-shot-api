@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 
-// ForeverBooked brand colors:
 const COLOR_DARK = "#23243a";
 const COLOR_CORAL = "rgb(247 133 127)";
 const COLOR_CORAL_LIGHT = "#ffe9e7";
@@ -11,8 +10,6 @@ const COLOR_GRAY = "#e5e7eb";
 const COLOR_WHITE = "#fff";
 const COLOR_SUCCESS = "#28a745";
 const COLOR_PRIMARY = COLOR_DARK;
-
-// HighLevel menu font
 const FONT_FAMILY = '"Inter", "Lato", "Segoe UI", "Arial", sans-serif';
 
 const WEB_APP_URL =
@@ -104,9 +101,6 @@ export default function ContactList() {
 
   // Select all records (across all pages)
   const [allRecordsSelected, setAllRecordsSelected] = useState(false);
-
-  // Debug
-  const [debugInfo, setDebugInfo] = useState({});
 
   useEffect(() => {
     function getLocationId() {
@@ -209,15 +203,6 @@ export default function ContactList() {
       const res = await fetch(url);
       const data = await res.json();
 
-      setDebugInfo({
-        lastRequest: url,
-        response: {
-          contactsCount: data.contacts?.length,
-          pagination: data.pagination,
-          hasMore: data.pagination?.hasMore
-        }
-      });
-
       if (res.ok) {
         setContacts(data.contacts || []);
         setTotalCount(data.pagination?.total || 0);
@@ -299,7 +284,6 @@ export default function ContactList() {
   // "Select all X records" logic
   const handleSelectAllRecords = () => {
     setAllRecordsSelected(true);
-    // This is just a flag for UX, actual selection for all contacts should be handled on server when launching campaign.
   };
 
   // Clicking "Unselect All" (checkbox in header)
@@ -653,50 +637,6 @@ export default function ContactList() {
             ))}
           </tbody>
         </table>
-        {/* Select all records banner and summary */}
-        {isAllOnPageSelected() && !allRecordsSelected && filteredContacts().length > 0 && (
-          <div>
-            <div style={{
-              background: "#f5f5f5",
-              padding: "12px 18px",
-              borderTop: `1px solid ${COLOR_GRAY}`,
-              color: COLOR_PRIMARY,
-              fontWeight: 600,
-              fontFamily: FONT_FAMILY,
-              fontSize: 15,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between"
-            }}>
-              <span>
-                You have selected {filteredContacts().length} records.
-                {" "}
-                {totalCount > filteredContacts().length && (
-                  <>Select all {totalCount} records?</>
-                )}
-              </span>
-              {totalCount > filteredContacts().length && (
-                <button
-                  onClick={handleSelectAllRecords}
-                  style={{
-                    marginLeft: 16,
-                    background: COLOR_CORAL,
-                    color: COLOR_WHITE,
-                    border: "none",
-                    borderRadius: 5,
-                    padding: "6px 18px",
-                    fontWeight: 700,
-                    fontSize: 15,
-                    fontFamily: FONT_FAMILY,
-                    cursor: "pointer"
-                  }}
-                >
-                  Select all {totalCount} records
-                </button>
-              )}
-            </div>
-          </div>
-        )}
         {/* All records selected banner */}
         {allRecordsSelected && (
           <div style={{
@@ -713,6 +653,49 @@ export default function ContactList() {
           </div>
         )}
       </div>
+      {/* Select all records banner and summary above pagination */}
+      {isAllOnPageSelected() && !allRecordsSelected && filteredContacts().length > 0 && (
+        <div style={{
+          background: "#f5f5f5",
+          padding: "12px 18px",
+          borderTop: `1px solid ${COLOR_GRAY}`,
+          color: COLOR_PRIMARY,
+          fontWeight: 600,
+          fontFamily: FONT_FAMILY,
+          fontSize: 15,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 10
+        }}>
+          <span>
+            You have selected {filteredContacts().length} records.
+            {" "}
+            {totalCount > filteredContacts().length && (
+              <>Select all {totalCount} records?</>
+            )}
+          </span>
+          {totalCount > filteredContacts().length && (
+            <button
+              onClick={handleSelectAllRecords}
+              style={{
+                marginLeft: 16,
+                background: COLOR_CORAL,
+                color: COLOR_WHITE,
+                border: "none",
+                borderRadius: 5,
+                padding: "6px 18px",
+                fontWeight: 700,
+                fontSize: 15,
+                fontFamily: FONT_FAMILY,
+                cursor: "pointer"
+              }}
+            >
+              Select all {totalCount} records
+            </button>
+          )}
+        </div>
+      )}
       {/* Pagination */}
       <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16}}>
         <button
