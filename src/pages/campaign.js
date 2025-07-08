@@ -214,8 +214,8 @@ export default function ContactList() {
         setPrevPages([]);
       } else {
         if (pageNumber > prevPages.length + 1) {
-          setPrevPages((prev) => [...prev, { url, page: pageNumber }]);
-        }
+  setPrevPages((prev) => [...prev, { url, page: pageNumber }]);
+}
       }
     } else {
       alert('API error: ' + (data.error?.message || 'Unknown error'));
