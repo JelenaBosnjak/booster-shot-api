@@ -11,7 +11,7 @@ const COLOR_WHITE = "#fff";
 const COLOR_SUCCESS = "#28a745";
 const COLOR_PRIMARY = COLOR_DARK;
 const FONT_FAMILY = '"Inter", "Lato", "Segoe UI", "Arial", sans-serif';
-const [currentPageUrl, setCurrentPageUrl] = useState(null);
+
 
 const WEB_APP_URL =
   "https://script.google.com/macros/s/AKfycbzkVfD4fEUHuGryVKiRR_SKtWeyMFCkxTyGeAKPlaY0yR5XJq_0xuYYEbA6v3odZeMKHA/exec";
@@ -64,6 +64,7 @@ function Modal({ open, onClose, children }) {
 export default function ContactList() {
   const router = useRouter();
   const [locationId, setLocationId] = useState(null);
+  const [currentPageUrl, setCurrentPageUrl] = useState(null);
 
   // Campaign config
   const [boosterShotMessage, setBoosterShotMessage] = useState('');
