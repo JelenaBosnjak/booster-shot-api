@@ -1006,9 +1006,11 @@ const handlePreviousPage = () => {
                   fontFamily: FONT_FAMILY
                 }}
               >
-                {selectedContacts.size === 0
-                  ? "Select Contacts..."
-                  : `Selected: ${selectedContacts.size} contact${selectedContacts.size > 1 ? "s" : ""}`}
+                {selectedContacts.size === 0 && !allRecordsSelected
+                          ? "Select Contacts..."
+                          : allRecordsSelected
+                            ? `Selected: ${totalCount} contact${totalCount > 1 ? "s" : ""}`
+                            : `Selected: ${selectedContacts.size} contact${selectedContacts.size > 1 ? "s" : ""}`}
               </button>
             </div>
             <Modal open={contactsModal} onClose={() => setContactsModal(false)}>
