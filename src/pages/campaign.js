@@ -729,9 +729,9 @@ const handlePreviousPage = () => {
       </div>
       <div style={{display: "flex", justifyContent: "flex-end", gap: 10}}>
         <button
-          onClick={() => {
-            setContactsModal(false);
-            setAllRecordsSelected(false);
+              onClick={() => {
+                setContactsModal(false);
+                    // Do NOT reset allRecordsSelected here!
           }}
           style={{
             padding: "10px 30px", borderRadius: 8, fontWeight: 700,
