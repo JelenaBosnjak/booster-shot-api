@@ -214,11 +214,6 @@ export default function ContactList() {
 
 if (resetHistory) {
   setPrevPages([]);
-} else {
-  // Only add to prevPages if not on the first page
-  if (pageNumber > 1) {
-    setPrevPages(prev => [...prev, { url, page: pageNumber }]);
-  }
 }
     } else {
       alert('API error: ' + (data.error?.message || 'Unknown error'));
