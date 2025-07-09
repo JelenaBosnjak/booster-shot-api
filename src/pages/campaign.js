@@ -266,12 +266,13 @@ const handleLoadContacts = () => {
 
   // Select all contacts on page (checkbox in header)
   const isAllOnPageSelected = () => {
-    const filtered = filteredContacts();
-    return (
-      filtered.length > 0 &&
-      filtered.every(c => selectedContacts.has(c.id))
-    );
-  };
+      if (allRecordsSelected) return true;
+            const filtered = filteredContacts();
+  return (
+    filtered.length > 0 &&
+    filtered.every(c => selectedContacts.has(c.id))
+  );
+};
 
   const handleHeaderCheckboxChange = () => {
     const filtered = filteredContacts();
@@ -298,15 +299,21 @@ const handleLoadContacts = () => {
   };
 
   const toggleSelectContact = (id) => {
-    const newSet = new Set(selectedContacts);
-    if (newSet.has(id)) {
-      newSet.delete(id);
-      setAllRecordsSelected(false);
-    } else {
-      newSet.add(id);
-    }
-    setSelectedContacts(newSet);
-  };
+  if (allRecordsSelected) {
+    // If all selected and user clicks a row, unselect all and then toggle this one
+    setAllRecordsSelected(false);
+    setSelectedContacts(new Set([id]));
+    return;
+  }
+  const newSet = new Set(selectedContacts);
+  if (newSet.has(id)) {
+    newSet.delete(id);
+    setAllRecordsSelected(false);
+  } else {
+    newSet.add(id);
+  }
+  setSelectedContacts(newSet);
+};
 
   const handleSelectLatestImportedContacts = async () => {
     if (!locationId) {
@@ -617,7 +624,7 @@ const handlePreviousPage = () => {
                 <td style={{padding: 8, textAlign: "center"}}>
                   <input
                     type="checkbox"
-                    checked={selectedContacts.has(contact.id)}
+                    checked={allRecordsSelected || selectedContacts.has(contact.id)}
                     onChange={() => toggleSelectContact(contact.id)}
                     style={{
                       accentColor: COLOR_CORAL, width: 20, height: 20, cursor: "pointer"
