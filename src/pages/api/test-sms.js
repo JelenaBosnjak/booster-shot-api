@@ -1,11 +1,22 @@
+/**
+ * Handler for triggering a GoHighLevel workflow via webhook, and updating a custom value.
+ * 
+ * - Updates a custom value ("Booster Shot Message") in the subaccount as before.
+ * - Ensures the contact exists (as before).
+ * - Triggers your provided GHL workflow webhook instead of using /v1/messages (NO REST API needed).
+ * - Returns success response if webhook POST is accepted (200 OK).
+ * 
+ * NOTE: The actual SMS is sent by the GHL workflow, not this script!
+ */
+
 const API_TOKEN = process.env.GHL_API_TOKEN || process.env.GHL_API_KEY;
 const LOCATION_ID = process.env.GHL_ACCOUNT_ID;
 const GHL_API_CONTACTS_URL = "https://rest.gohighlevel.com/v1/contacts";
-const GHL_API_MESSAGES_URL = "https://rest.gohighlevel.com/v1/messages";
 const GHL_CUSTOM_VALUES_URL = "https://rest.gohighlevel.com/v1/custom-values";
-const GHL_API_MESSAGESEARCH_URL = "https://rest.gohighlevel.com/v1/messages/search";
 const BOOSTER_SHOT_CUSTOM_VALUE_NAME = "Booster Shot Message";
-const SUPPORT_NUMBER = "+17276046386"; // Hardcoded sender
+
+// Your GHL workflow webhook URL
+const GHL_WORKFLOW_WEBHOOK_URL = "https://services.leadconnectorhq.com/hooks/zyqWCxyLmqChNzRwf630/webhook-trigger/beb4af91-ce2c-4a2b-b288-e6607b5024c6";
 
 function safeJson(text) {
   try {
@@ -70,7 +81,7 @@ export default async function handler(req, res) {
       customValueResult = { success: false, error: "Custom value not found" };
     }
 
-    // 2. Ensure contact exists
+    // 2. Ensure contact exists (optional for workflow, but useful for reporting)
     const contactRes = await fetch(GHL_API_CONTACTS_URL, {
       method: "POST",
       headers: {
@@ -89,41 +100,29 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Failed to create or update contact", contactText });
     }
 
-    // 3. Send SMS from hardcoded support number
-    const smsRes = await fetch(GHL_API_MESSAGES_URL, {
+    // 3. Trigger the GHL workflow via webhook POST
+    const webhookRes = await fetch(GHL_WORKFLOW_WEBHOOK_URL, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${API_TOKEN}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        phone,
-        message,
-        locationId: LOCATION_ID,
-        fromNumber: SUPPORT_NUMBER
-      })
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone, message })
     });
-
-    const smsHeaders = Object.fromEntries(smsRes.headers.entries());
-    const smsStatus = smsRes.status;
-    const smsStatusText = smsRes.statusText;
-    const smsResponseBodyRaw = await smsRes.text();
-    const smsResponseBody = safeJson(smsResponseBodyRaw);
+    const webhookStatus = webhookRes.status;
+    const webhookStatusText = webhookRes.statusText;
+    const webhookBodyRaw = await webhookRes.text();
+    const webhookBody = safeJson(webhookBodyRaw);
 
     const finalApiResponse = {
-      success: smsRes.ok,
-      fromNumber: SUPPORT_NUMBER,
+      success: webhookRes.ok,
       customValueResult,
       contactData,
-      smsApi: {
-        status: smsStatus,
-        statusText: smsStatusText,
-        headers: smsHeaders,
-        body: smsResponseBody
+      webhook: {
+        status: webhookStatus,
+        statusText: webhookStatusText,
+        body: webhookBody
       },
       debugMeta: {
         time: new Date().toISOString(),
-        handler: "test-sms",
+        handler: "send-ghl-workflow",
         phone,
         message,
         locationId: LOCATION_ID,
@@ -131,14 +130,14 @@ export default async function handler(req, res) {
       }
     };
 
-    if (!smsRes.ok) {
-      return res.status(500).json({ ...finalApiResponse, error: "Failed to send test SMS" });
+    if (!webhookRes.ok) {
+      return res.status(500).json({ ...finalApiResponse, error: "Failed to trigger GHL workflow webhook" });
     }
     return res.status(200).json(finalApiResponse);
 
   } catch (e) {
     return res.status(500).json({
-      error: e.message || "Unknown error sending test SMS.",
+      error: e.message || "Unknown error sending workflow request.",
       stack: e.stack
     });
   }
