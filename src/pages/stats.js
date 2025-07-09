@@ -442,16 +442,16 @@ export default function StatusPage() {
       {/* Tabs */}
       <div style={styles.tabRow}>
         <button
-          style={activeTab === "previous" ? { ...styles.tab, ...styles.tabActive } : styles.tab}
-          onClick={() => setActiveTab("previous")}
-        >
-          Previous Campaign
-        </button>
-        <button
           style={activeTab === "current" ? { ...styles.tab, ...styles.tabActive } : styles.tab}
           onClick={() => setActiveTab("current")}
         >
           Current Campaign
+        </button>
+        <button
+          style={activeTab === "previous" ? { ...styles.tab, ...styles.tabActive } : styles.tab}
+          onClick={() => setActiveTab("previous")}
+        >
+          Previous Campaign
         </button>
       </div>
 
@@ -464,68 +464,8 @@ export default function StatusPage() {
               {currentCampaignTimestamp || "N/A"}
             </span>
           </div>
-          {/* New: Total Campaigns Counter */}
-          <div style={{ ...styles.campaignTimeRow, marginBottom: "12px" }}>
-            <span>
-              <span style={{ fontWeight: 700, color: COLOR_CORAL }}>Total Campaigns:</span>{" "}
-              {totalCampaignLaunches}
-            </span>
-          </div>
-          {/* Debug block below campaign time */}
-          <div style={styles.debugBlock}>
-            <b>Number of Contacts with custom field Booster:</b>{" "}
-            {boosterHistoryCount === null ? "Loading..." : boosterHistoryCount}
-            {sortedContacts.length > 0 && (
-              <div style={{ marginTop: 8 }}>
-                <b>Contacts (earliest 10):</b>
-                <ul style={{ margin: 0, paddingLeft: 18 }}>
-                  {sortedContacts.slice(0, 10).map(c =>
-                    <li key={c.id}>
-                      {c.firstName} {c.lastName} ({c.phone || "No phone"}) |{" "}
-                      {c.boosterFields.map(f => {
-                        const launches = extractAllCampaignDateTimes(f.value);
-                        return launches.map(l => l.date.toLocaleString()).join(", ");
-                      }).join(", ")}
-                    </li>
-                  )}
-                  {sortedContacts.length > 10 && <li>...and more</li>}
-                </ul>
-              </div>
-            )}
-          </div>
+          {/* Cards */}
           <div style={styles.contentRow}>
-            {/* Previous Booster Campaign Card */}
-            <div style={styles.card}>
-              <div style={styles.cardTitle}>Previous Booster Campaign</div>
-              <div style={styles.cardRow}>
-                <span style={styles.cardLabel}>Campaign Name:</span>
-                <span style={styles.cardValue}>{previousBoosterCampaignName}</span>
-              </div>
-              <div style={styles.cardRow}>
-                <span style={styles.cardLabel}>Time:</span>
-                <span style={styles.cardValue}>{previousCampaignTimestamp || "N/A"}</span>
-              </div>
-              <div style={styles.cardRow}>
-                <span style={styles.cardLabel}>Total Added:</span>
-                <span style={styles.cardValue}>{loading ? "Loading..." : prevTotal}</span>
-              </div>
-              <div style={styles.cardRow}>
-                <span style={styles.cardLabel}>1st Message Sent:</span>
-                <span style={styles.cardValue}>{previousFirstMsgCount}</span>
-              </div>
-              <div style={styles.cardRow}>
-                <span style={styles.cardLabel}>Remaining:</span>
-                <span style={styles.cardValue}>{Math.max(prevRemaining, 0)}</span>
-              </div>
-              <div style={styles.cardRow}>
-                <span style={styles.cardLabel}>Responded:</span>
-                <span style={styles.cardValue}>{previousRespondedCount}</span>
-              </div>
-              <div style={styles.cardRow}>
-                <span style={styles.cardLabel}>No Response:</span>
-                <span style={styles.cardValue}>{previousNoResponseCount}</span>
-              </div>
-            </div>
             {/* Current Booster Campaign Card */}
             <div style={styles.card}>
               <div style={styles.cardTitle}>Current Booster Campaign</div>
@@ -556,6 +496,38 @@ export default function StatusPage() {
               <div style={styles.cardRow}>
                 <span style={styles.cardLabel}>No Response:</span>
                 <span style={styles.cardValue}>{currentNoResponseCount}</span>
+              </div>
+            </div>
+            {/* Previous Booster Campaign Card */}
+            <div style={styles.card}>
+              <div style={styles.cardTitle}>Previous Booster Campaign</div>
+              <div style={styles.cardRow}>
+                <span style={styles.cardLabel}>Campaign Name:</span>
+                <span style={styles.cardValue}>{previousBoosterCampaignName}</span>
+              </div>
+              <div style={styles.cardRow}>
+                <span style={styles.cardLabel}>Time:</span>
+                <span style={styles.cardValue}>{previousCampaignTimestamp || "N/A"}</span>
+              </div>
+              <div style={styles.cardRow}>
+                <span style={styles.cardLabel}>Total Added:</span>
+                <span style={styles.cardValue}>{loading ? "Loading..." : prevTotal}</span>
+              </div>
+              <div style={styles.cardRow}>
+                <span style={styles.cardLabel}>1st Message Sent:</span>
+                <span style={styles.cardValue}>{previousFirstMsgCount}</span>
+              </div>
+              <div style={styles.cardRow}>
+                <span style={styles.cardLabel}>Remaining:</span>
+                <span style={styles.cardValue}>{Math.max(prevRemaining, 0)}</span>
+              </div>
+              <div style={styles.cardRow}>
+                <span style={styles.cardLabel}>Responded:</span>
+                <span style={styles.cardValue}>{previousRespondedCount}</span>
+              </div>
+              <div style={styles.cardRow}>
+                <span style={styles.cardLabel}>No Response:</span>
+                <span style={styles.cardValue}>{previousNoResponseCount}</span>
               </div>
             </div>
           </div>
