@@ -11,6 +11,7 @@ const COLOR_WHITE = "#fff";
 const COLOR_SUCCESS = "#28a745";
 const COLOR_PRIMARY = COLOR_DARK;
 const FONT_FAMILY = '"Inter", "Lato", "Segoe UI", "Arial", sans-serif';
+const [currentPageUrl, setCurrentPageUrl] = useState(null);
 
 const WEB_APP_URL =
   "https://script.google.com/macros/s/AKfycbzkVfD4fEUHuGryVKiRR_SKtWeyMFCkxTyGeAKPlaY0yR5XJq_0xuYYEbA6v3odZeMKHA/exec";
@@ -197,8 +198,8 @@ export default function ContactList() {
   }, [campaign, boosterShotMessage, offers]);
 
   const loadPage = async (url, pageNumber, resetHistory = false) => {
+  setCurrentPageUrl(url);
   setLoadingContacts(true);
-  setRateLimitError(null);
   try {
     const res = await fetch(url);
     const data = await res.json();
@@ -237,9 +238,10 @@ const handleLoadContacts = () => {
   setContactsLoaded(false);
   setAllRecordsSelected(false);
   if (locationId) {
-    const initialUrl = `/api/get-contacts?locationId=${locationId}&limit=${limit}`;
-    loadPage(initialUrl, 1, true);
-  }
+  const initialUrl = `/api/get-contacts?locationId=${locationId}&limit=${limit}`;
+  setCurrentPageUrl(initialUrl);
+  loadPage(initialUrl, 1, true);
+ }
 };
 
   const openContactsModal = () => {
@@ -348,9 +350,9 @@ const handleLoadContacts = () => {
 
 const handleNextPage = () => {
   if (nextPageUrl) {
-    setPrevPages(prev => [...prev, { url: nextPageUrl, page: currentPage + 1 }]);
-    loadPage(nextPageUrl, currentPage + 1);
-  }
+  setPrevPages(prev => [...prev, { url: currentPageUrl, page: currentPage }]);
+  loadPage(nextPageUrl, currentPage + 1);
+ }
 };
 
 const handlePreviousPage = () => {
