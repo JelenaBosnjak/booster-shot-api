@@ -5,7 +5,7 @@ const GHL_API_MESSAGES_URL = "https://rest.gohighlevel.com/v1/messages";
 const GHL_CUSTOM_VALUES_URL = "https://rest.gohighlevel.com/v1/custom-values";
 const GHL_API_MESSAGESEARCH_URL = "https://rest.gohighlevel.com/v1/messages/search";
 const BOOSTER_SHOT_CUSTOM_VALUE_NAME = "Booster Shot Message";
-const SUPPORT_NUMBER = "+13135131469"; // Hardcoded sender
+const SUPPORT_NUMBER = "+17276046386"; // Hardcoded sender
 
 function safeJson(text) {
   try {
