@@ -457,14 +457,7 @@ export default function StatusPage() {
 
       {activeTab === "current" ? (
         <>
-          {/* Current campaign time at the top right above cards */}
-          <div style={styles.campaignTimeRow}>
-            <span>
-              <span style={{ fontWeight: 700, color: COLOR_CORAL }}>Campaign Time:</span>{" "}
-              {currentCampaignTimestamp || "N/A"}
-            </span>
-          </div>
-          {/* Cards */}
+          {/* Removed campaign time */}
           <div style={styles.contentRow}>
             {/* Current Booster Campaign Card */}
             <div style={styles.card}>
@@ -612,8 +605,11 @@ export default function StatusPage() {
             </table>
           </div>
           {/* Controls */}
-          <div style={styles.prevControlsRow}>
-            <button style={styles.controlBtn}>Export Report</button>
+          <div style={{
+            ...styles.prevControlsRow,
+            justifyContent: "center",
+            gap: 0
+          }}>
             <Link href="/campaign" legacyBehavior>
               <a style={styles.controlBtn}>Start New Campaign</a>
             </Link>
