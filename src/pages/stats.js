@@ -457,7 +457,7 @@ export default function StatusPage() {
 
       {activeTab === "current" ? (
         <>
-          {/* Removed campaign time */}
+          {/* Cards */}
           <div style={styles.contentRow}>
             {/* Current Booster Campaign Card */}
             <div style={styles.card}>
@@ -523,6 +523,12 @@ export default function StatusPage() {
                 <span style={styles.cardValue}>{previousNoResponseCount}</span>
               </div>
             </div>
+          </div>
+          {/* Start New Campaign button below boxes */}
+          <div style={{ display: "flex", justifyContent: "center", marginTop: 32 }}>
+            <Link href="/campaign" legacyBehavior>
+              <a style={styles.controlBtn}>Start New Campaign</a>
+            </Link>
           </div>
         </>
       ) : (
