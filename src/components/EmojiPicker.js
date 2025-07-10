@@ -4,7 +4,11 @@ import { Picker } from "emoji-mart";
 export default function EmojiPicker({ onSelect, style = {}, onClose }) {
   return (
     <div style={{ position: "absolute", zIndex: 1500, ...style }}>
-      <Picker onSelect={onSelect} title="Pick your emoji" emoji="point_up" />
+      <Picker
+        onEmojiSelect={onSelect}
+        theme="light"
+        style={{ border: "1px solid #eee", borderRadius: 8 }}
+      />
       {onClose && (
         <button
           onClick={onClose}

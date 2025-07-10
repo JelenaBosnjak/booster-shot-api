@@ -967,33 +967,45 @@ export default function ContactList() {
             </div>
            <div style={{marginBottom: 30, position: "relative"}}>
   <label style={{
-    fontWeight: 600, color: COLOR_PRIMARY, marginBottom: 10, display: 'flex', alignItems: 'center', fontSize: 15, fontFamily: FONT_FAMILY
+    fontWeight: 600,
+    color: COLOR_PRIMARY,
+    marginBottom: 10,
+    display: 'block',
+    fontSize: 15,
+    fontFamily: FONT_FAMILY
   }}>
     SMS Message
-    <span
-      style={{
-        display: 'inline-block',
-        marginLeft: 10,
-        cursor: 'pointer',
-        fontSize: 24,
-        borderRadius: '50%',
-        background: "#e5e7eb",
-        padding: 2,
-        border: "1.5px solid #ccc"
-      }}
-      title="Insert emoji"
-      onClick={() => setShowEmojiPicker((prev) => !prev)}
-    >
-      <span role="img" aria-label="smile" style={{ color: "#aaa" }}>😀</span>
-    </span>
   </label>
+  {/* Emoji button absolutely positioned on right inside textarea field */}
+  <button
+    type="button"
+    onClick={() => setShowEmojiPicker((prev) => !prev)}
+    style={{
+      position: "absolute",
+      top: 38,
+      right: 10,
+      zIndex: 10,
+      background: "#e5e7eb",
+      border: "none",
+      borderRadius: "50%",
+      width: 32,
+      height: 32,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 18,
+      cursor: "pointer",
+      color: "#888",
+      boxShadow: "0 1px 4px rgba(0,0,0,0.02)"
+    }}
+    aria-label="Insert emoji"
+  >
+    <span role="img" aria-label="smile">😀</span>
+  </button>
   {showEmojiPicker && (
     <EmojiPicker
-      onSelect={emoji => {
-        insertEmoji(emoji);
-        setShowEmojiPicker(false);
-      }}
-      style={{ top: 36, right: 0 }}
+      onSelect={insertEmoji}
+      style={{ top: 72, right: 0 }}
       onClose={() => setShowEmojiPicker(false)}
     />
   )}
@@ -1007,6 +1019,7 @@ export default function ContactList() {
       minHeight: '86px',
       borderRadius: '8px',
       padding: '13px',
+      paddingRight: 45, // extra space for emoji button
       border: `1.7px solid ${COLOR_GRAY}`,
       fontSize: '1.09rem',
       background: COLOR_LIGHT_BG,
