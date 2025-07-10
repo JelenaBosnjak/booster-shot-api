@@ -735,42 +735,29 @@ const handlePreviousPage = () => {
         >Next</button>
       </div>
       <div style={{display: "flex", justifyContent: "flex-end", gap: 10}}>
-        <button
-              onClick={() => {
-                setContactsModal(false);
-                    // Do NOT reset allRecordsSelected here!
-          }}
-          style={{
-            padding: "10px 30px", borderRadius: 8, fontWeight: 700,
-            background: "#eee", border: "none", color: COLOR_DARK, cursor: "pointer", fontFamily: FONT_FAMILY
-          }}
-        >Cancel</button>
-        <button
-            onClick={openContactsModal}
-            style={{
-              padding: "13px 20px",
-              borderRadius: 8,
-              background: "rgba(247,133,127,1)",
-              color: "#fff",
-              fontWeight: 900,
-              fontSize: 18,
-              border: "none",
-              cursor: "pointer",
-              boxShadow: "0 2px 6px rgba(44,44,55,0.08)",
-              outline: "none",
-              letterSpacing: 0.2,
-              transition: "background 0.16s",
-              fontFamily: FONT_FAMILY
-            }}
-          >
-            {selectedContacts.size === 0 && !allRecordsSelected
-              ? "Select Contacts..."
-              : allRecordsSelected
-                ? `Selected: ${totalCount} contact${totalCount > 1 ? "s" : ""}`
-                : `Selected: ${selectedContacts.size} contact${selectedContacts.size > 1 ? "s" : ""}`
-            }
-          </button>
-      </div>
+  <button
+    onClick={() => {
+      setContactsModal(false);
+      setAllRecordsSelected(false);
+    }}
+    style={{
+      padding: "10px 30px", borderRadius: 8, fontWeight: 700,
+      background: "#eee", border: "none", color: COLOR_DARK, cursor: "pointer", fontFamily: FONT_FAMILY
+    }}
+  >Cancel</button>
+  <button
+    onClick={handleLaunchCampaign}
+    disabled={campaignLoading || (!allRecordsSelected && selectedContacts.size === 0) || !!rateLimitError}
+    style={{
+      padding: "10px 30px", borderRadius: 8, fontWeight: 700,
+      background: campaignLoading || (!allRecordsSelected && selectedContacts.size === 0) || !!rateLimitError ? "#ecb6b2" : COLOR_CORAL,
+      color: COLOR_WHITE, border: "none", cursor: campaignLoading || (!allRecordsSelected && selectedContacts.size === 0) || !!rateLimitError ? "not-allowed" : "pointer",
+      fontFamily: FONT_FAMILY
+    }}
+  >
+    {campaignLoading ? 'Launching...' : `🎯 Launch Campaign (${allRecordsSelected ? totalCount : selectedContacts.size})`}
+  </button>
+</div>
       {rateLimitError && (
         <div style={{
           background: '#fff2f2', color: '#d43636', border: `1.5px solid #d43636`,
