@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import { useRef } from 'react';
+import EmojiPicker from '../components/EmojiPicker';
 
 const COLOR_DARK = "#23243a";
 const COLOR_CORAL = "rgb(247 133 127)";
@@ -99,6 +101,27 @@ export default function ContactList() {
   const [offerCategories, setOfferCategories] = useState([]);
   const [campaignNames, setCampaignNames] = useState([]);
   const [optimizedMessage, setOptimizedMessage] = useState('');
+
+    // Emoji picker state and textarea ref
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const smsTextAreaRef = useRef(null);
+  const insertEmoji = (emoji) => {
+    const emojiChar = emoji.native || emoji.colons || emoji;
+    const textarea = smsTextAreaRef.current;
+    if (!textarea) {
+      setSmsMessage(smsMessage + emojiChar);
+      return;
+    }
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const before = smsMessage.slice(0, start);
+    const after = smsMessage.slice(end);
+    setSmsMessage(before + emojiChar + after);
+    setTimeout(() => {
+      textarea.focus();
+      textarea.selectionStart = textarea.selectionEnd = start + emojiChar.length;
+    }, 0);
+  };
 
   // Test
   const [testPhone, setTestPhone] = useState('');
@@ -942,57 +965,86 @@ export default function ContactList() {
                 </select>
               </div>
             </div>
-            <div style={{marginBottom: 30}}>
-              <label style={{
-                fontWeight: 600, color: COLOR_PRIMARY, marginBottom: 10, display: 'block', fontSize: 15, fontFamily: FONT_FAMILY
-              }}>SMS Message</label>
-              <textarea
-                placeholder="Type your SMS/Text here..."
-                value={smsMessage}
-                onChange={e => setSmsMessage(e.target.value)}
-                style={{
-                  width: "100%",
-                  minHeight: '86px',
-                  borderRadius: '8px',
-                  padding: '13px',
-                  border: `1.7px solid ${COLOR_GRAY}`,
-                  fontSize: '1.09rem',
-                  background: COLOR_LIGHT_BG,
-                  color: COLOR_DARK,
-                  marginTop: '4px',
-                  marginBottom: '13px',
-                  outline: 'none',
-                  transition: 'border-color 0.2s',
-                  resize: "vertical",
-                  fontFamily: FONT_FAMILY
-                }}
-              />
-              <div style={{display: "flex", justifyContent: "space-between", alignItems: "center"}}>
-                <span style={{fontSize: 13, color: "#888", fontFamily: FONT_FAMILY}}>
-                  {getCharCount()}/{getSMSCount() * 160} characters ({getSMSCount()} SMS{getSMSCount() > 1 ? "es" : ""})
-                </span>
-                <button
-                  onClick={handleOptimizeAI}
-                  disabled={optimizing || !smsMessage}
-                  style={{
-                    padding: "7px 20px",
-                    borderRadius: 8,
-                    background: optimizing || !smsMessage ? "rgba(247,133,127,0.37)" : "rgba(247,133,127,0.89)",
-                    color: "#fff",
-                    fontWeight: 800,
-                    fontSize: 16,
-                    border: "none",
-                    cursor: optimizing || !smsMessage ? "not-allowed" : "pointer",
-                    outline: "none",
-                    boxShadow: "0 2px 6px rgba(44,44,55,0.08)",
-                    transition: "background 0.16s",
-                    fontFamily: FONT_FAMILY
-                  }}
-                >
-                  {optimizing ? 'Optimizing...' : 'Optimize with AI'}
-                </button>
-              </div>
-            </div>
+           <div style={{marginBottom: 30, position: "relative"}}>
+  <label style={{
+    fontWeight: 600, color: COLOR_PRIMARY, marginBottom: 10, display: 'flex', alignItems: 'center', fontSize: 15, fontFamily: FONT_FAMILY
+  }}>
+    SMS Message
+    <span
+      style={{
+        display: 'inline-block',
+        marginLeft: 10,
+        cursor: 'pointer',
+        fontSize: 24,
+        borderRadius: '50%',
+        background: "#e5e7eb",
+        padding: 2,
+        border: "1.5px solid #ccc"
+      }}
+      title="Insert emoji"
+      onClick={() => setShowEmojiPicker((prev) => !prev)}
+    >
+      <span role="img" aria-label="smile" style={{ color: "#aaa" }}>😀</span>
+    </span>
+  </label>
+  {showEmojiPicker && (
+    <EmojiPicker
+      onSelect={emoji => {
+        insertEmoji(emoji);
+        setShowEmojiPicker(false);
+      }}
+      style={{ top: 36, right: 0 }}
+      onClose={() => setShowEmojiPicker(false)}
+    />
+  )}
+  <textarea
+    ref={smsTextAreaRef}
+    placeholder="Type your SMS/Text here..."
+    value={smsMessage}
+    onChange={e => setSmsMessage(e.target.value)}
+    style={{
+      width: "100%",
+      minHeight: '86px',
+      borderRadius: '8px',
+      padding: '13px',
+      border: `1.7px solid ${COLOR_GRAY}`,
+      fontSize: '1.09rem',
+      background: COLOR_LIGHT_BG,
+      color: COLOR_DARK,
+      marginTop: '4px',
+      marginBottom: '13px',
+      outline: 'none',
+      transition: 'border-color 0.2s',
+      resize: "vertical",
+      fontFamily: FONT_FAMILY
+    }}
+  />
+  <div style={{display: "flex", justifyContent: "space-between", alignItems: "center"}}>
+    <span style={{fontSize: 13, color: "#888", fontFamily: FONT_FAMILY}}>
+      {getCharCount()}/{getSMSCount() * 160} characters ({getSMSCount()} SMS{getSMSCount() > 1 ? "es" : ""})
+    </span>
+    <button
+      onClick={handleOptimizeAI}
+      disabled={optimizing || !smsMessage}
+      style={{
+        padding: "7px 20px",
+        borderRadius: 8,
+        background: optimizing || !smsMessage ? "rgba(247,133,127,0.37)" : "rgba(247,133,127,0.89)",
+        color: "#fff",
+        fontWeight: 800,
+        fontSize: 16,
+        border: "none",
+        cursor: optimizing || !smsMessage ? "not-allowed" : "pointer",
+        outline: "none",
+        boxShadow: "0 2px 6px rgba(44,44,55,0.08)",
+        transition: "background 0.16s",
+        fontFamily: FONT_FAMILY
+      }}
+    >
+      {optimizing ? 'Optimizing...' : 'Optimize with AI'}
+    </button>
+  </div>
+</div>
 
             {/* Test */}
             <div style={{
