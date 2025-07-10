@@ -725,7 +725,7 @@ export default function ContactList() {
         )}
       </div>
       {/* Select all records banner and summary above pagination */}
-      {isAllOnPageSelected() && !allRecordsSelected && filteredContacts().length > 0 && (
+      {!allRecordsSelected && selectedContacts.size > 0 && (
         <div style={{
           background: "#f5f5f5",
           padding: "12px 18px",
@@ -740,50 +740,33 @@ export default function ContactList() {
           marginBottom: 10
         }}>
           <span>
-  You have selected {allRecordsSelected ? totalCount : selectedContacts.size} record{(allRecordsSelected ? totalCount : selectedContacts.size) !== 1 ? "s" : ""}.
-  {" "}
-{!allRecordsSelected && selectedContacts.size > 0 && (
-  <div style={{
-    background: "#f5f5f5",
-    padding: "12px 18px",
-    borderTop: `1px solid ${COLOR_GRAY}`,
-    color: COLOR_PRIMARY,
-    fontWeight: 600,
-    fontFamily: FONT_FAMILY,
-    fontSize: 15,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 10
-  }}>
-    <span>
-      You have selected {selectedContacts.size} record{selectedContacts.size !== 1 ? "s" : ""}.
-      {" "}
-      {totalCount > selectedContacts.size && (
-        <>Select all {totalCount} records?</>
+            You have selected {selectedContacts.size} record{selectedContacts.size !== 1 ? "s" : ""}.
+            {" "}
+            {totalCount > selectedContacts.size && (
+              <>Select all {totalCount} records?</>
+            )}
+          </span>
+          {totalCount > selectedContacts.size && (
+            <button
+              onClick={handleSelectAllRecords}
+              style={{
+                marginLeft: 16,
+                background: COLOR_CORAL,
+                color: COLOR_WHITE,
+                border: "none",
+                borderRadius: 5,
+                padding: "6px 18px",
+                fontWeight: 700,
+                fontSize: 15,
+                fontFamily: FONT_FAMILY,
+                cursor: "pointer"
+              }}
+            >
+              Select all {totalCount} records
+            </button>
+          )}
+        </div>
       )}
-    </span>
-    {totalCount > selectedContacts.size && (
-      <button
-        onClick={handleSelectAllRecords}
-        style={{
-          marginLeft: 16,
-          background: COLOR_CORAL,
-          color: COLOR_WHITE,
-          border: "none",
-          borderRadius: 5,
-          padding: "6px 18px",
-          fontWeight: 700,
-          fontSize: 15,
-          fontFamily: FONT_FAMILY,
-          cursor: "pointer"
-        }}
-      >
-        Select all {totalCount} records
-      </button>
-    )}
-  </div>
-)}
       {/* Pagination */}
       <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16}}>
         <button
