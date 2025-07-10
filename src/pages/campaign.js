@@ -449,108 +449,48 @@ const handlePreviousPage = () => {
   };
 
   const handleLaunchCampaign = async () => {
-    if ((!allRecordsSelected && selectedContacts.size === 0) || (allRecordsSelected && totalCount === 0)) {
-      alert('Please select at least one contact.');
+  setCampaignLoading(true);
+  setRateLimitError(null);
+  try {
+    const response = await fetch('/api/add-tag', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        contactIds: allRecordsSelected ? "ALL" : Array.from(selectedContacts),
+        tag: 'booster shot',
+        boosterShotMessage: smsMessage,
+        boosterCampaignName: campaign,
+        locationId
+      })
+    });
+
+    const result = await response.json();
+
+    if (response.status === 429) {
+      setRateLimitError({
+        message: result.error,
+        resetTime: result.resetTime
+      });
       return;
     }
-    setCampaignLoading(true);
-    setRateLimitError(null);
-try {
-  const response = await fetch('/api/add-tag', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      contactIds: allRecordsSelected ? "ALL" : Array.from(selectedContacts),
-      tag: 'booster shot',
-      boosterShotMessage: smsMessage,
-      boosterCampaignName: campaign,
-      locationId
-    })
-  });
 
-  const result = await response.json();
-
-  if (response.status === 429) {
-    setRateLimitError({
-      message: result.error,
-      resetTime: result.resetTime
-    });
-    return;
-  }
-
-  if (!response.ok) {
-    throw new Error(result.error || 'Failed to add tags');
-  }
-
-  // You can add additional handling here if needed
-
-  setContactsLoaded(false);
-  setSelectedContacts(new Set());
-  setAllRecordsSelected(false);
-
-} catch (err) {
-  console.error(err);
-  alert(`Error: ${err.message}`);
-}
-      if (!confirmed) return;
-
-      const response = await fetch('/api/add-tag', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          contactIds: allRecordsSelected ? "ALL" : Array.from(selectedContacts),
-          tag: 'booster shot',
-          boosterShotMessage: smsMessage,
-          boosterCampaignName: campaign,
-          locationId
-        })
-      });
-
-      const result = await response.json();
-
-      if (response.status === 429) {
-        setRateLimitError({
-          message: result.error,
-          resetTime: result.resetTime
-        });
-        return;
-      }
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to add tags');
-      }
-
-      const successCount = result.results.filter(r => r.success).length;
-      const failedCount = result.results.length - successCount;
-
-      if (failedCount > 0) {
-        alert(`✅ ${successCount} contacts tagged successfully\n❌ ${failedCount} contacts failed`);
-      } else {
-        alert(`🎉 Successfully tagged all ${successCount} contacts!`);
-      }
-      if (result.customValueResult && !result.customValueResult.success) {
-        alert(`Warning: Custom Value update failed: ${result.customValueResult.error}`);
-      }
-      if (result.boosterCampaignNameCustomValueResult && !result.boosterCampaignNameCustomValueResult.success) {
-        alert(`Warning: Booster Campaign Name update failed: ${result.boosterCampaignNameCustomValueResult.error}`);
-      }
-
-      setContactsModal(false);
-      setContactsLoaded(false);
-      setSelectedContacts(new Set());
-      setAllRecordsSelected(false);
-
-    } catch (err) {
-      console.error(err);
-      alert(`Error: ${err.message}`);
-    } finally {
-      setCampaignLoading(false);
+    if (!response.ok) {
+      throw new Error(result.error || 'Failed to add tags');
     }
-  };
+
+    setContactsLoaded(false);
+    setSelectedContacts(new Set());
+    setAllRecordsSelected(false);
+
+  } catch (err) {
+    console.error(err);
+    alert(`Error: ${err.message}`);
+  } finally {
+    setCampaignLoading(false);
+  }
+};
 
   const getCharCount = () => smsMessage.length;
   const getSMSCount = () => Math.ceil(smsMessage.length / 160);
