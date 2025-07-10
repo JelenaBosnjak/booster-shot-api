@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 
-const [modalStep, setModalStep] = useState("select"); // select | confirm | loading | success
 const COLOR_DARK = "#23243a";
 const COLOR_CORAL = "rgb(247 133 127)";
 const COLOR_CORAL_LIGHT = "#ffe9e7";
@@ -88,6 +87,7 @@ function AnimatedDots({ color = COLOR_CORAL }) {
 }
 
 export default function ContactList() {
+  const [modalStep, setModalStep] = useState("select"); // select | confirm | loading | success
   const router = useRouter();
   const [locationId, setLocationId] = useState(null);
   const [currentPageUrl, setCurrentPageUrl] = useState(null);
