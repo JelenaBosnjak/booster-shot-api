@@ -740,12 +740,12 @@ export default function ContactList() {
           marginBottom: 10
         }}>
           <span>
-            You have selected {filteredContacts().length} records.
-            {" "}
-            {totalCount > filteredContacts().length && (
-              <>Select all {totalCount} records?</>
-            )}
-          </span>
+  You have selected {allRecordsSelected ? totalCount : selectedContacts.size} record{(allRecordsSelected ? totalCount : selectedContacts.size) !== 1 ? "s" : ""}.
+  {" "}
+  {(!allRecordsSelected && totalCount > selectedContacts.size) && (
+    <>Select all {totalCount} records?</>
+  )}
+</span>
           {totalCount > filteredContacts().length && (
             <button
               onClick={handleSelectAllRecords}
