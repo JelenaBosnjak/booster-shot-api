@@ -102,7 +102,7 @@ export default function ContactList() {
   const [campaignNames, setCampaignNames] = useState([]);
   const [optimizedMessage, setOptimizedMessage] = useState('');
 
-    // Emoji picker state and textarea ref
+  // Emoji picker state and textarea ref
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const smsTextAreaRef = useRef(null);
   const insertEmoji = (emoji) => {
@@ -497,8 +497,7 @@ export default function ContactList() {
         });
         return;
       }
-
-      if (!response.ok) {
+            if (!response.ok) {
         throw new Error(result.error || 'Failed to add tags');
       }
 
@@ -965,7 +964,7 @@ export default function ContactList() {
                 </select>
               </div>
             </div>
-           <div style={{marginBottom: 30, position: "relative"}}>
+           <div style={{marginBottom: 30}}>
   <label style={{
     fontWeight: 600,
     color: COLOR_PRIMARY,
@@ -976,39 +975,38 @@ export default function ContactList() {
   }}>
     SMS Message
   </label>
-  {/* Emoji button absolutely positioned on right inside textarea field */}
-  <button
-    type="button"
-    onClick={() => setShowEmojiPicker((prev) => !prev)}
-    style={{
-      position: "absolute",
-      top: 38,
-      right: 10,
-      zIndex: 10,
-      background: "#e5e7eb",
-      border: "none",
-      borderRadius: "50%",
-      width: 32,
-      height: 32,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      fontSize: 18,
-      cursor: "pointer",
-      color: "#888",
-      boxShadow: "0 1px 4px rgba(0,0,0,0.02)"
-    }}
-    aria-label="Insert emoji"
-  >
-    <span role="img" aria-label="smile">😀</span>
-  </button>
-  {showEmojiPicker && (
-    <EmojiPicker
-      onSelect={insertEmoji}
-      style={{ top: 72, right: 0 }}
-      onClose={() => setShowEmojiPicker(false)}
-    />
-  )}
+  <div style={{display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: 2, position: "relative"}}>
+    <button
+      type="button"
+      onClick={() => setShowEmojiPicker((prev) => !prev)}
+      style={{
+        background: "#e5e7eb",
+        border: "none",
+        borderRadius: "50%",
+        width: 32,
+        height: 32,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: 20,
+        cursor: "pointer",
+        color: "#888",
+        marginRight: 2,
+        boxShadow: "0 1px 4px rgba(0,0,0,0.02)"
+      }}
+      aria-label="Insert emoji"
+    >
+      <span role="img" aria-label="smile">😀</span>
+    </button>
+    {showEmojiPicker && (
+      <div style={{position: "absolute", top: 36, right: 0, zIndex: 100}}>
+        <EmojiPicker
+          onSelect={insertEmoji}
+          onClose={() => setShowEmojiPicker(false)}
+        />
+      </div>
+    )}
+  </div>
   <textarea
     ref={smsTextAreaRef}
     placeholder="Type your SMS/Text here..."
@@ -1019,7 +1017,6 @@ export default function ContactList() {
       minHeight: '86px',
       borderRadius: '8px',
       padding: '13px',
-      paddingRight: 45, // extra space for emoji button
       border: `1.7px solid ${COLOR_GRAY}`,
       fontSize: '1.09rem',
       background: COLOR_LIGHT_BG,
@@ -1100,7 +1097,7 @@ export default function ContactList() {
               </button>
             </div>
 
-            {/* Contacts selection */}
+                        {/* Contacts selection */}
             <div style={{marginBottom: 16}}>
               <label style={{
                 fontWeight: 600, color: COLOR_PRIMARY, marginBottom: 7, display: 'block', fontSize: 15, fontFamily: FONT_FAMILY

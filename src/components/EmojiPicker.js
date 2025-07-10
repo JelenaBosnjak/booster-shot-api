@@ -1,11 +1,11 @@
 import React from "react";
 import { Picker } from "emoji-mart";
 
-export default function EmojiPicker({ onSelect, style = {}, onClose }) {
+export default function EmojiPicker({ onSelect, onClose }) {
   return (
-    <div style={{ position: "absolute", zIndex: 1500, ...style }}>
+    <div>
       <Picker
-        onEmojiSelect={onSelect}
+        onEmojiSelect={onSelect} // key for emoji-mart v5+
         theme="light"
         style={{ border: "1px solid #eee", borderRadius: 8 }}
       />
