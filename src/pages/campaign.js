@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 
+const [modalStep, setModalStep] = useState("select"); // select | confirm | loading | success
 const COLOR_DARK = "#23243a";
 const COLOR_CORAL = "rgb(247 133 127)";
 const COLOR_CORAL_LIGHT = "#ffe9e7";
@@ -58,6 +59,31 @@ function Modal({ open, onClose, children }) {
         {children}
       </div>
     </div>
+  );
+}
+
+function AnimatedDots({ color = COLOR_CORAL }) {
+  return (
+    <span style={{ display: "inline-block", marginLeft: 6 }}>
+      <span style={{
+        display: "inline-block",
+        width: 8, height: 8, borderRadius: "50%",
+        background: color, marginRight: 3, animation: "bounce 1s infinite alternate"
+      }} />
+      <span style={{
+        display: "inline-block",
+        width: 8, height: 8, borderRadius: "50%",
+        background: color, marginRight: 3, animation: "bounce 1s infinite alternate 0.2s"
+      }} />
+      <span style={{
+        display: "inline-block",
+        width: 8, height: 8, borderRadius: "50%",
+        background: color, animation: "bounce 1s infinite alternate 0.4s"
+      }} />
+      <style>
+        {`@keyframes bounce { 0% {transform: translateY(0);} 100% {transform: translateY(-8px);} }`}
+      </style>
+    </span>
   );
 }
 
@@ -429,17 +455,45 @@ const handlePreviousPage = () => {
     }
     setCampaignLoading(true);
     setRateLimitError(null);
-    try {
-      let confirmed = false;
-      if (allRecordsSelected) {
-        confirmed = window.confirm(
-          `About to tag ALL ${totalCount} contacts with "booster shot".\n\nThis may take several minutes for large batches. Continue?`
-        );
-      } else {
-        confirmed = window.confirm(
-          `About to tag ${selectedContacts.size} contacts with "booster shot".\n\nThis may take several minutes for large batches. Continue?`
-        );
-      }
+try {
+  const response = await fetch('/api/add-tag', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      contactIds: allRecordsSelected ? "ALL" : Array.from(selectedContacts),
+      tag: 'booster shot',
+      boosterShotMessage: smsMessage,
+      boosterCampaignName: campaign,
+      locationId
+    })
+  });
+
+  const result = await response.json();
+
+  if (response.status === 429) {
+    setRateLimitError({
+      message: result.error,
+      resetTime: result.resetTime
+    });
+    return;
+  }
+
+  if (!response.ok) {
+    throw new Error(result.error || 'Failed to add tags');
+  }
+
+  // You can add additional handling here if needed
+
+  setContactsLoaded(false);
+  setSelectedContacts(new Set());
+  setAllRecordsSelected(false);
+
+} catch (err) {
+  console.error(err);
+  alert(`Error: ${err.message}`);
+}
       if (!confirmed) return;
 
       const response = await fetch('/api/add-tag', {
@@ -542,6 +596,68 @@ const handlePreviousPage = () => {
           }}
         />
       </div>
+      const launchModalUI = (
+  <>
+    {modalStep === "confirm" && (
+      <div>
+        <h2 style={{marginBottom: 16, color: COLOR_PRIMARY, fontWeight: 800}}>Ready to Launch Campaign?</h2>
+        <div style={{marginBottom: 24, color: COLOR_DARK}}>
+          You’re about to start a campaign for <b>{allRecordsSelected ? totalCount : selectedContacts.size}</b> contacts.<br/>
+          Depending on the number of contacts, this may take a few minutes.
+        </div>
+        <div style={{display: "flex", justifyContent: "flex-end", gap: 10}}>
+          <button
+            onClick={() => setModalStep("select")}
+            style={{
+              padding: "10px 30px", borderRadius: 8, fontWeight: 700,
+              background: "#eee", border: "none", color: COLOR_DARK, cursor: "pointer", fontFamily: FONT_FAMILY
+            }}
+          >Cancel</button>
+          <button
+            onClick={async () => {
+              setModalStep("loading");
+              await handleLaunchCampaign();
+              setModalStep("success");
+            }}
+            style={{
+              padding: "10px 30px", borderRadius: 8, fontWeight: 700,
+              background: COLOR_CORAL, color: COLOR_WHITE, border: "none", cursor: "pointer", fontFamily: FONT_FAMILY
+            }}
+          >Start Campaign</button>
+        </div>
+      </div>
+    )}
+    {modalStep === "loading" && (
+      <div style={{textAlign: "center", padding: 24}}>
+        <h3 style={{marginTop: 0, color: COLOR_PRIMARY, fontWeight: 800}}>🚀 Starting your campaign...</h3>
+        <div style={{margin: "16px 0", color: "#555"}}>
+          Please wait while we process your contacts.<br/>
+          <AnimatedDots />
+          <div style={{marginTop: 14, fontSize: 14, color: "#b6573f"}}>This may take a few minutes for large campaigns.</div>
+        </div>
+      </div>
+    )}
+    {modalStep === "success" && (
+      <div style={{textAlign: "center", padding: 24}}>
+        <h3 style={{color: COLOR_SUCCESS, marginBottom: 16, fontWeight: 800}}>🎉 Campaign started!</h3>
+        <div style={{marginBottom: 22}}>
+          Your messages will be sent shortly.<br/>
+          You can view campaign progress on the <a href="/stats" style={{color: COLOR_CORAL}}>Status page</a>.
+        </div>
+        <button
+          style={{
+            padding: "10px 34px", borderRadius: 8, fontWeight: 700,
+            background: COLOR_CORAL, color: COLOR_WHITE, border: "none", cursor: "pointer", fontFamily: FONT_FAMILY
+          }}
+          onClick={() => {
+            setContactsModal(false);
+            setModalStep("select");
+          }}
+        >Close</button>
+      </div>
+    )}
+  </>
+);
       <div style={{display: "flex", alignItems: "flex-end", gap: 14, marginBottom: 12}}>
         <button style={{
           background: COLOR_PRIMARY, color: COLOR_WHITE, border: "none",
@@ -746,17 +862,18 @@ const handlePreviousPage = () => {
     }}
   >Cancel</button>
   <button
-    onClick={handleLaunchCampaign}
-    disabled={campaignLoading || (!allRecordsSelected && selectedContacts.size === 0) || !!rateLimitError}
-    style={{
-      padding: "10px 30px", borderRadius: 8, fontWeight: 700,
-      background: campaignLoading || (!allRecordsSelected && selectedContacts.size === 0) || !!rateLimitError ? "#ecb6b2" : COLOR_CORAL,
-      color: COLOR_WHITE, border: "none", cursor: campaignLoading || (!allRecordsSelected && selectedContacts.size === 0) || !!rateLimitError ? "not-allowed" : "pointer",
-      fontFamily: FONT_FAMILY
-    }}
-  >
-    {campaignLoading ? 'Launching...' : `🎯 Launch Campaign (${allRecordsSelected ? totalCount : selectedContacts.size})`}
-  </button>
+  onClick={() => setModalStep("confirm")}
+  disabled={selectedContacts.size === 0 && !allRecordsSelected}
+  style={{
+    padding: "10px 30px", borderRadius: 8, fontWeight: 700,
+    background: (selectedContacts.size === 0 && !allRecordsSelected) ? "#ecb6b2" : COLOR_CORAL,
+    color: COLOR_WHITE, border: "none", cursor: (selectedContacts.size === 0 && !allRecordsSelected) ? "not-allowed" : "pointer",
+    fontFamily: FONT_FAMILY,
+    marginLeft: 10
+  }}
+>
+  🎯 Launch Campaign ({allRecordsSelected ? totalCount : selectedContacts.size})
+</button>
 </div>
       {rateLimitError && (
         <div style={{
@@ -1007,8 +1124,11 @@ const handlePreviousPage = () => {
                             : `Selected: ${selectedContacts.size} contact${selectedContacts.size > 1 ? "s" : ""}`}
               </button>
             </div>
-            <Modal open={contactsModal} onClose={() => setContactsModal(false)}>
-              {contactModalUI}
+            <Modal open={contactsModal} onClose={() => {
+                    setContactsModal(false);
+                      setModalStep("select");
+                                    }}>
+                    {modalStep === "select" ? contactModalUI : launchModalUI}
             </Modal>
           </>
         ) : (
