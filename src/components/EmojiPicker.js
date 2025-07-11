@@ -5,7 +5,7 @@ export default function EmojiPicker({ onSelect, onClose }) {
   return (
     <div>
       <Picker
-        onEmojiSelect={onSelect} // key for emoji-mart v5+
+        onEmojiSelect={onSelect} // <-- CRITICAL: must be **onEmojiSelect**
         theme="light"
         style={{ border: "1px solid #eee", borderRadius: 8 }}
       />
