@@ -964,24 +964,28 @@ export default function ContactList() {
                 </select>
               </div>
             </div>
-           <div style={{marginBottom: 30}}>
-  <label style={{
-    fontWeight: 600,
-    color: COLOR_PRIMARY,
-    marginBottom: 10,
-    display: 'block',
-    fontSize: 15,
-    fontFamily: FONT_FAMILY
-  }}>
-    SMS Message
-  </label>
-  <div style={{display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: 2, position: "relative"}}>
+    <div style={{ marginBottom: 30 }}>
+  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, position: "relative" }}>
+    <label
+      style={{
+        fontWeight: 600,
+        color: COLOR_PRIMARY,
+        fontSize: 15,
+        fontFamily: FONT_FAMILY,
+        marginBottom: 0,
+        marginRight: 4,
+        lineHeight: 1.2,
+        whiteSpace: "nowrap"
+      }}
+    >
+      SMS Message
+    </label>
     <button
       type="button"
       onClick={() => setShowEmojiPicker((prev) => !prev)}
       style={{
-        background: "#e5e7eb",
-        border: "none",
+        background: "#f6f6fa",
+        border: "1.5px solid #e5e7eb",
         borderRadius: "50%",
         width: 32,
         height: 32,
@@ -992,18 +996,42 @@ export default function ContactList() {
         cursor: "pointer",
         color: "#888",
         marginRight: 2,
-        boxShadow: "0 1px 4px rgba(0,0,0,0.02)"
+        boxShadow: "0 1px 4px rgba(0,0,0,0.02)",
+        transition: "background 0.15s, border 0.15s"
       }}
       aria-label="Insert emoji"
     >
       <span role="img" aria-label="smile">😀</span>
     </button>
     {showEmojiPicker && (
-      <div style={{position: "absolute", top: 36, right: 0, zIndex: 100}}>
+      <div
+        style={{
+          position: "absolute",
+          top: 44,
+          left: 120,
+          zIndex: 100,
+          background: "#fff",
+          border: "1.4px solid #e5e7eb",
+          borderRadius: 10,
+          boxShadow: "0 4px 24px rgba(35,36,58,0.13)"
+        }}
+      >
         <EmojiPicker
           onSelect={insertEmoji}
           onClose={() => setShowEmojiPicker(false)}
         />
+        <style>{`
+          .EmojiPickerReact {
+            --epr-bg-color: #fff !important;
+            --epr-border-color: #e5e7eb !important;
+            --epr-category-label-bg-color: #f6f6fa !important;
+            --epr-search-border-color: #e5e7eb !important;
+            --epr-hover-bg-color: #f6f6fa !important;
+          }
+          .EmojiPickerReact, .EmojiPickerReact * {
+            font-family: ${FONT_FAMILY};
+          }
+        `}</style>
       </div>
     )}
   </div>
