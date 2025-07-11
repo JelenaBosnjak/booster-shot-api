@@ -1,11 +1,16 @@
 import React from "react";
-import { Picker } from "emoji-mart";
+import dynamic from "next/dynamic";
+
+const Picker = dynamic(
+  () => import("emoji-mart").then(mod => mod.Picker),
+  { ssr: false }
+);
 
 export default function EmojiPicker({ onSelect, onClose }) {
   return (
     <div>
       <Picker
-        onEmojiSelect={onSelect} // <-- CRITICAL: must be **onEmojiSelect**
+        onEmojiSelect={onSelect}
         theme="light"
         style={{ border: "1px solid #eee", borderRadius: 8 }}
       />
