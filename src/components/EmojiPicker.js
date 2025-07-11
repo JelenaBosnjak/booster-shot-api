@@ -1,42 +1,17 @@
-import React, { useEffect } from "react";
+import React from "react";
 import EmojiPickerReact from "emoji-picker-react";
 
 export default function EmojiPicker({ onSelect, onClose }) {
-  useEffect(() => {
-    console.debug("[EmojiPicker] Mounted");
-    return () => {
-      console.debug("[EmojiPicker] Unmounted");
-    };
-  }, []);
-
-  // Log props on each render
-  console.debug("[EmojiPicker] Rendered with props:", { onSelect, onClose });
-
   function handleEmojiClick(emojiData, event) {
-    console.debug("[EmojiPicker] Emoji selected:", emojiData);
-    try {
-      if (onSelect) onSelect(emojiData.emoji);
-    } catch (e) {
-      console.error("[EmojiPicker] Error in onSelect handler:", e);
-      debugger; // <-- triggers browser debugger if open
-    }
+    if (onSelect) onSelect(emojiData.emoji);
   }
 
   function handleCloseClick() {
-    console.debug("[EmojiPicker] Close button clicked");
-    try {
-      if (onClose) onClose();
-    } catch (e) {
-      console.error("[EmojiPicker] Error in onClose handler:", e);
-      debugger;
-    }
+    if (onClose) onClose();
   }
 
   return (
     <div style={{ position: "relative" }}>
-      <div style={{ color: 'red', fontFamily: 'monospace', fontSize: 11, marginBottom: 2 }}>
-        [DEBUG] EmojiPicker rendered
-      </div>
       <EmojiPickerReact
         onEmojiClick={handleEmojiClick}
         theme="light"

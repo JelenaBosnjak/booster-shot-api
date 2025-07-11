@@ -965,7 +965,13 @@ export default function ContactList() {
               </div>
             </div>
     <div style={{ marginBottom: 30 }}>
-  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, position: "relative" }}>
+  <div style={{
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+    position: "relative"
+  }}>
     <label
       style={{
         fontWeight: 600,
@@ -973,7 +979,6 @@ export default function ContactList() {
         fontSize: 15,
         fontFamily: FONT_FAMILY,
         marginBottom: 0,
-        marginRight: 4,
         lineHeight: 1.2,
         whiteSpace: "nowrap"
       }}
@@ -994,21 +999,21 @@ export default function ContactList() {
         justifyContent: "center",
         fontSize: 20,
         cursor: "pointer",
-        color: "#888",
-        marginRight: 2,
+        color: "#bbb", // Makes the emoji gray
+        marginLeft: 8,
         boxShadow: "0 1px 4px rgba(0,0,0,0.02)",
         transition: "background 0.15s, border 0.15s"
       }}
       aria-label="Insert emoji"
     >
-      <span role="img" aria-label="smile">😀</span>
+      <span role="img" aria-label="smile" style={{ color: "#bbb" }}>😀</span>
     </button>
     {showEmojiPicker && (
       <div
         style={{
           position: "absolute",
           top: 44,
-          left: 120,
+          right: 0,
           zIndex: 100,
           background: "#fff",
           border: "1.4px solid #e5e7eb",
