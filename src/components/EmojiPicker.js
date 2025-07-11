@@ -1,49 +1,50 @@
 import React, { useEffect } from "react";
-import dynamic from "next/dynamic";
-
-// Dynamically import Picker to avoid SSR issues in Next.js
-const Picker = dynamic(
-  () => import("emoji-mart").then(mod => {
-    console.log("emoji-mart Picker module loaded:", mod);
-    return mod.Picker;
-  }),
-  { ssr: false }
-);
+import EmojiPickerReact from "emoji-picker-react";
 
 export default function EmojiPicker({ onSelect, onClose }) {
   useEffect(() => {
-    console.log("EmojiPicker mounted");
+    console.debug("[EmojiPicker] Mounted");
     return () => {
-      console.log("EmojiPicker unmounted");
+      console.debug("[EmojiPicker] Unmounted");
     };
   }, []);
 
-  // Log props
-  console.log("EmojiPicker props:", { onSelect, onClose });
+  // Log props on each render
+  console.debug("[EmojiPicker] Rendered with props:", { onSelect, onClose });
 
-  // Wrap the handler to see if it is called
-  function handleEmojiSelect(emoji) {
-    console.log("Emoji selected:", emoji);
+  function handleEmojiClick(emojiData, event) {
+    console.debug("[EmojiPicker] Emoji selected:", emojiData);
     try {
-      if (onSelect) onSelect(emoji);
+      if (onSelect) onSelect(emojiData.emoji);
     } catch (e) {
-      console.error("Error in EmojiPicker onSelect handler:", e);
+      console.error("[EmojiPicker] Error in onSelect handler:", e);
+      debugger; // <-- triggers browser debugger if open
+    }
+  }
+
+  function handleCloseClick() {
+    console.debug("[EmojiPicker] Close button clicked");
+    try {
+      if (onClose) onClose();
+    } catch (e) {
+      console.error("[EmojiPicker] Error in onClose handler:", e);
+      debugger;
     }
   }
 
   return (
-    <div>
+    <div style={{ position: "relative" }}>
       <div style={{ color: 'red', fontFamily: 'monospace', fontSize: 11, marginBottom: 2 }}>
         [DEBUG] EmojiPicker rendered
       </div>
-      <Picker
-        onEmojiSelect={handleEmojiSelect}
+      <EmojiPickerReact
+        onEmojiClick={handleEmojiClick}
         theme="light"
         style={{ border: "1px solid #eee", borderRadius: 8 }}
       />
       {onClose && (
         <button
-          onClick={onClose}
+          onClick={handleCloseClick}
           style={{
             position: "absolute",
             top: 2,
