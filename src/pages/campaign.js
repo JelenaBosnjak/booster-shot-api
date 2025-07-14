@@ -91,6 +91,7 @@ export default function ContactList() {
   const [modalStep, setModalStep] = useState("select"); // select | confirm | loading | success
   const router = useRouter();
   const [locationId, setLocationId] = useState(null);
+  const [checkingLocation, setCheckingLocation] = useState(true);
   const [currentPageUrl, setCurrentPageUrl] = useState(null);
 
   // Campaign config
@@ -194,6 +195,7 @@ export default function ContactList() {
     } else if (existing) {
       setLocationId(existing);
     }
+    setCheckingLocation(false);
   }, [router.asPath]);
 
   useEffect(() => {
@@ -914,7 +916,12 @@ export default function ContactList() {
         </div>
         <hr style={{margin: "28px 0"}} />
 
-        {locationId ? (
+        {checkingLocation ? (
+          <div style={{textAlign: "center", padding: "60px 0"}}>
+            <span style={{color: "#888", fontSize: 20, fontFamily: FONT_FAMILY}}>Detecting account</span>
+            <AnimatedDots />
+          </div>
+        ) : locationId ? (
           <>
             {/* Campaign config */}
             <div style={{display: "flex", gap: 26, marginBottom: 30}}>
@@ -1130,7 +1137,7 @@ export default function ContactList() {
               </button>
             </div>
 
-                        {/* Contacts selection */}
+            {/* Contacts selection */}
             <div style={{marginBottom: 16}}>
               <label style={{
                 fontWeight: 600, color: COLOR_PRIMARY, marginBottom: 7, display: 'block', fontSize: 15, fontFamily: FONT_FAMILY
