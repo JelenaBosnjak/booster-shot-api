@@ -220,7 +220,7 @@ export default function StatusPage() {
       borderRadius: "18px",
       padding: "34px 34px",
       boxShadow: "0 4px 16px rgba(35,36,58,0.08)",
-      minWidth: 400,    // Significantly wider cards (was 320/340 before)
+      minWidth: 400,
       maxWidth: 480,
       border: `1.5px solid ${COLOR_GRAY}`,
       display: "flex",
@@ -400,7 +400,8 @@ export default function StatusPage() {
       textAlign: "center",
       fontSize: "1.4rem",
       color: COLOR_CORAL,
-      cursor: "pointer"
+      cursor: "pointer",
+      minWidth: 70, // ADDED: Expand Select column min width for better appearance
     },
     prevListTdSelectSelected: {
       textAlign: "center",
@@ -410,7 +411,8 @@ export default function StatusPage() {
       fontWeight: 900,
       background: "#fff2f1",
       borderRadius: "50%",
-      padding: "0 8px"
+      padding: "0 8px",
+      minWidth: 70 // ADDED: Expand Select column min width for better appearance
     },
     prevControlsRow: {
       display: "flex",
@@ -626,7 +628,7 @@ export default function StatusPage() {
                   <th style={styles.prevListTh}>Campaign Name</th>
                   <th style={styles.prevListTh}>Date</th>
                   <th style={styles.prevListTh}>Status</th>
-                  <th style={styles.prevListTh}>Select</th>
+                  <th style={Object.assign({}, styles.prevListTh, { minWidth: 70, textAlign: "center" })}>Select</th>
                 </tr>
               </thead>
               <tbody>
