@@ -30,6 +30,22 @@ function extractAllCampaignDateTimes(str) {
   return launches;
 }
 
+// Helper: Format a date string to "M/D/YYYY, h:mm:ss A" in user's locale
+function formatDate(dateString) {
+  if (!dateString) return "N/A";
+  const dateObj = new Date(dateString);
+  if (isNaN(dateObj.getTime())) return dateString;
+  return dateObj.toLocaleString(undefined, {
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true
+  });
+}
+
 export default function StatusPage() {
   const [activeTab, setActiveTab] = useState("current");
 
@@ -432,6 +448,18 @@ export default function StatusPage() {
     return remaining === 0 ? "Done" : "In progress";
   }
 
+  // Format previous campaign date to match current campaign style
+  function formatPrevCampaignDate(rawDate) {
+    if (!rawDate) return "N/A";
+    // Try to parse as ISO if possible, else fallback
+    const dateObj = new Date(rawDate);
+    if (!isNaN(dateObj.getTime())) {
+      return formatDate(dateObj);
+    }
+    // If not ISO, could be already a nice string, just return
+    return rawDate;
+  }
+
   return (
     <div style={styles.page}>
       {/* Header with logo on right */}
@@ -552,7 +580,7 @@ export default function StatusPage() {
             </div>
             <div style={styles.prevDetailsRow}>
               <span style={styles.prevDetailsLabel}>Date:</span>
-              <span style={styles.prevDetailsValue}>{selectedPrev?.date || "N/A"}</span>
+              <span style={styles.prevDetailsValue}>{formatPrevCampaignDate(selectedPrev?.date)}</span>
             </div>
             <div style={styles.prevDetailsRow}>
               <span style={styles.prevDetailsLabel}>Total Added:</span>
@@ -593,7 +621,7 @@ export default function StatusPage() {
                 {paginatedPreviousCampaigns.map((row, idx) => (
                   <tr key={row.name + row.date}>
                     <td style={styles.prevListTd}>{row.name}</td>
-                    <td style={styles.prevListTd}>{row.date}</td>
+                    <td style={styles.prevListTd}>{formatPrevCampaignDate(row.date)}</td>
                     <td style={{ ...styles.prevListTd, ...styles.prevListTdStatus }}>
                       {getPrevCampaignStatus(row)}
                     </td>
