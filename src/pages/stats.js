@@ -212,7 +212,7 @@ export default function StatusPage() {
     contentRow: {
       display: "flex",
       justifyContent: "center",
-      gap: "48px",
+      gap: "64px", // Wider gap to match wider cards
       margin: "40px 0 36px 0"
     },
     card: {
@@ -220,8 +220,8 @@ export default function StatusPage() {
       borderRadius: "18px",
       padding: "34px 34px",
       boxShadow: "0 4px 16px rgba(35,36,58,0.08)",
-      minWidth: 320,
-      maxWidth: 380,
+      minWidth: 400,    // Significantly wider cards (was 320/340 before)
+      maxWidth: 480,
       border: `1.5px solid ${COLOR_GRAY}`,
       display: "flex",
       flexDirection: "column",
