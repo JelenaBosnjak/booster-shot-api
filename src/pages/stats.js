@@ -36,7 +36,6 @@ export default function StatusPage() {
   // Dynamically loaded previous campaigns
   const [previousCampaigns, setPreviousCampaigns] = useState([]);
   const [selectedPrevIndex, setSelectedPrevIndex] = useState(0);
-  const [showContacts, setShowContacts] = useState(false);
 
   const [boosterStats, setBoosterStats] = useState({ previous: 0, current: 0, contacts: [] });
   const [boosterHistoryCount, setBoosterHistoryCount] = useState(null);
@@ -324,31 +323,6 @@ export default function StatusPage() {
       fontWeight: 800,
       fontSize: "1.11rem"
     },
-    contactsList: {
-      background: "#fff7f5",
-      border: `1px solid ${COLOR_CORAL}`,
-      borderRadius: "9px",
-      marginTop: 10,
-      padding: "12px 18px",
-      fontSize: "1.09rem",
-      maxHeight: 320,
-      overflowY: "auto"
-    },
-    contactsListTitle: {
-      color: COLOR_CORAL,
-      fontWeight: 800,
-      marginBottom: 8,
-      fontSize: "1.09rem"
-    },
-    showContactsBtn: {
-      color: COLOR_CORAL,
-      fontWeight: 700,
-      fontSize: "1.04rem",
-      background: "none",
-      border: "none",
-      cursor: "pointer",
-      marginLeft: 8
-    },
     prevCampaignsListSection: {
       background: COLOR_WHITE,
       borderRadius: "18px",
@@ -401,7 +375,7 @@ export default function StatusPage() {
       fontSize: "1.4rem",
       color: COLOR_CORAL,
       cursor: "pointer",
-      minWidth: 70, // ADDED: Expand Select column min width for better appearance
+      minWidth: 70
     },
     prevListTdSelectSelected: {
       textAlign: "center",
@@ -412,7 +386,7 @@ export default function StatusPage() {
       background: "#fff2f1",
       borderRadius: "50%",
       padding: "0 8px",
-      minWidth: 70 // ADDED: Expand Select column min width for better appearance
+      minWidth: 70
     },
     prevControlsRow: {
       display: "flex",
@@ -448,7 +422,6 @@ export default function StatusPage() {
   // Reset selectedPrevIndex if page changes
   useEffect(() => {
     setSelectedPrevIndex(0);
-    setShowContacts(false);
   }, [prevPage]);
 
   // Determine campaign status for previous campaigns
@@ -585,9 +558,6 @@ export default function StatusPage() {
               <span style={styles.prevDetailsLabel}>Total Added:</span>
               <span style={styles.prevDetailsValue}>
                 {(selectedPrev.contacts && selectedPrev.contacts.length) || 0}
-                <button style={styles.showContactsBtn} onClick={() => setShowContacts(show => !show)}>
-                  {showContacts ? "Hide" : "Show"}
-                </button>
               </span>
             </div>
             <div style={styles.prevDetailsRow}>
@@ -606,18 +576,6 @@ export default function StatusPage() {
               <span style={styles.prevDetailsLabel}>No Response:</span>
               <span style={styles.prevDetailsValue}>{selectedPrevNoResponse}</span>
             </div>
-            {showContacts && selectedPrev.contacts && (
-              <div style={styles.contactsList}>
-                <div style={styles.contactsListTitle}>Contacts for this campaign:</div>
-                <ul style={{ margin: 0, paddingLeft: 18 }}>
-                  {selectedPrev.contacts.map((c) =>
-                    <li key={c.id}>
-                      {c.firstName} {c.lastName} ({c.phone || "No phone"})
-                    </li>
-                  )}
-                </ul>
-              </div>
-            )}
           </div>
           {/* Previous Campaigns List */}
           <div style={styles.prevCampaignsListSection}>
@@ -641,7 +599,7 @@ export default function StatusPage() {
                     </td>
                     <td
                       style={idx === selectedPrevIndex ? styles.prevListTdSelectSelected : styles.prevListTdSelect}
-                      onClick={() => { setSelectedPrevIndex(idx); setShowContacts(false); }}
+                      onClick={() => { setSelectedPrevIndex(idx); }}
                     >
                       {idx === selectedPrevIndex ? "●" : "○"}
                     </td>
