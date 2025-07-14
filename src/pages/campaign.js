@@ -918,7 +918,7 @@ export default function ContactList() {
 
         {checkingLocation ? (
           <div style={{textAlign: "center", padding: "60px 0"}}>
-            <span style={{color: "#888", fontSize: 20, fontFamily: FONT_FAMILY}}>Detecting account</span>
+            <span style={{color: "#888", fontSize: 20, fontFamily: FONT_FAMILY}}>Loading application</span>
             <AnimatedDots />
           </div>
         ) : locationId ? (
