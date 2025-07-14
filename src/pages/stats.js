@@ -449,6 +449,14 @@ export default function StatusPage() {
     setShowContacts(false);
   }, [prevPage]);
 
+  // Determine campaign status for previous campaigns
+  function getPrevCampaignStatus(row) {
+    const total = row.contacts?.length || 0;
+    const sent = typeof row.firstMsgCount === "number" ? row.firstMsgCount : 0;
+    const remaining = total - sent;
+    return remaining === 0 ? "Done" : "In progress";
+  }
+
   return (
     <div style={styles.page}>
       {/* Header with logo on right */}
@@ -463,7 +471,7 @@ export default function StatusPage() {
           src="/logo.png"
           alt="Logo"
           style={styles.logo}
-          onError={e => { e.currentTarget.src = "https://via.placeholder.com/120x44?text=Logo" }}
+          onError={e => { e.currentTarget.src = "https://via.placeholder.com/120x44?text=Logo"; }}
         />
       </div>
 
@@ -626,7 +634,9 @@ export default function StatusPage() {
                   <tr key={row.name + row.date}>
                     <td style={styles.prevListTd}>{row.name}</td>
                     <td style={styles.prevListTd}>{row.date}</td>
-                    <td style={{ ...styles.prevListTd, ...styles.prevListTdStatus }}>{row.status}</td>
+                    <td style={{ ...styles.prevListTd, ...styles.prevListTdStatus }}>
+                      {getPrevCampaignStatus(row)}
+                    </td>
                     <td
                       style={idx === selectedPrevIndex ? styles.prevListTdSelectSelected : styles.prevListTdSelect}
                       onClick={() => { setSelectedPrevIndex(idx); setShowContacts(false); }}
