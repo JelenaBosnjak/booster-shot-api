@@ -56,6 +56,11 @@ export default function StatusPage() {
   const [currentNoResponseCount, setCurrentNoResponseCount] = useState(0);
   const [previousNoResponseCount, setPreviousNoResponseCount] = useState(0);
 
+  // Pagination for previous campaigns
+  const [prevPage, setPrevPage] = useState(1);
+  const campaignsPerPage = 10;
+  const totalPrevPages = Math.ceil(previousCampaigns.length / campaignsPerPage);
+
   useEffect(() => {
     async function fetchStats() {
       setLoading(true);
@@ -106,20 +111,14 @@ export default function StatusPage() {
     fetchStats();
   }, []);
 
-  const sortedContacts = (boosterStats.contacts || []).slice().sort((a, b) => {
-    const aValue = a.boosterFields?.[0]?.value;
-    const bValue = b.boosterFields?.[0]?.value;
-    const aLaunches = extractAllCampaignDateTimes(aValue);
-    const bLaunches = extractAllCampaignDateTimes(bValue);
-    const aDate = aLaunches[0]?.date;
-    const bDate = bLaunches[0]?.date;
-    if (!aDate && !bDate) return 0;
-    if (!aDate) return 1;
-    if (!bDate) return -1;
-    return aDate - bDate;
-  });
+  // Paginated list for previous campaigns
+  const paginatedPreviousCampaigns = previousCampaigns.slice(
+    (prevPage - 1) * campaignsPerPage,
+    prevPage * campaignsPerPage
+  );
 
-  const selectedPrev = previousCampaigns[selectedPrevIndex] || previousCampaigns[0] || {};
+  // Adjust selectedPrevIndex to be relative to the current page
+  const selectedPrev = paginatedPreviousCampaigns[selectedPrevIndex] || paginatedPreviousCampaigns[0] || {};
 
   // helpers for Remaining
   const prevTotal = boosterStats.previous;
@@ -418,8 +417,37 @@ export default function StatusPage() {
       justifyContent: "center",
       gap: "22px",
       margin: "24px 0 0 0"
+    },
+    pagination: {
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      gap: "12px",
+      marginTop: "12px"
+    },
+    pageBtn: {
+      padding: "6px 14px",
+      borderRadius: "6px",
+      background: "#f6f6f6",
+      border: `1.5px solid ${COLOR_GRAY}`,
+      color: COLOR_CORAL,
+      fontWeight: 700,
+      cursor: "pointer",
+      fontSize: "1.05rem",
+      outline: "none"
+    },
+    pageBtnActive: {
+      background: COLOR_CORAL,
+      color: COLOR_WHITE,
+      border: `1.5px solid ${COLOR_CORAL}`
     }
   };
+
+  // Reset selectedPrevIndex if page changes
+  useEffect(() => {
+    setSelectedPrevIndex(0);
+    setShowContacts(false);
+  }, [prevPage]);
 
   return (
     <div style={styles.page}>
@@ -594,7 +622,7 @@ export default function StatusPage() {
                 </tr>
               </thead>
               <tbody>
-                {previousCampaigns.map((row, idx) => (
+                {paginatedPreviousCampaigns.map((row, idx) => (
                   <tr key={row.name + row.date}>
                     <td style={styles.prevListTd}>{row.name}</td>
                     <td style={styles.prevListTd}>{row.date}</td>
@@ -609,6 +637,34 @@ export default function StatusPage() {
                 ))}
               </tbody>
             </table>
+            {/* Pagination controls */}
+            {totalPrevPages > 1 && (
+              <div style={styles.pagination}>
+                <button
+                  style={styles.pageBtn}
+                  disabled={prevPage === 1}
+                  onClick={() => setPrevPage(prev => Math.max(1, prev - 1))}
+                >
+                  &larr; Previous
+                </button>
+                {Array.from({ length: totalPrevPages }, (_, i) => (
+                  <button
+                    key={i}
+                    style={prevPage === i + 1 ? { ...styles.pageBtn, ...styles.pageBtnActive } : styles.pageBtn}
+                    onClick={() => setPrevPage(i + 1)}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+                <button
+                  style={styles.pageBtn}
+                  disabled={prevPage === totalPrevPages}
+                  onClick={() => setPrevPage(prev => Math.min(totalPrevPages, prev + 1))}
+                >
+                  Next &rarr;
+                </button>
+              </div>
+            )}
           </div>
           {/* Controls */}
           <div style={{
