@@ -17,6 +17,15 @@ const FONT_FAMILY = '"Inter", "Lato", "Segoe UI", "Arial", sans-serif';
 const WEB_APP_URL =
   "https://script.google.com/macros/s/AKfycbzkVfD4fEUHuGryVKiRR_SKtWeyMFCkxTyGeAKPlaY0yR5XJq_0xuYYEbA6v3odZeMKHA/exec";
 
+  // Helper to build API URL with optional search/tag/page
+function buildContactsApiUrl({ locationId, limit, tag, search, page }) {
+  let url = `/api/get-contacts?locationId=${encodeURIComponent(locationId)}&limit=${limit}`;
+  if (tag) url += `&tag=${encodeURIComponent(tag)}`;
+  if (search) url += `&search=${encodeURIComponent(search)}`;
+  if (page) url += `&page=${page}`;
+  return url;
+}
+
 function Modal({ open, onClose, children }) {
   if (!open) return null;
   return (
@@ -276,43 +285,33 @@ export default function ContactList() {
     }
   };
 
-  const handleLoadContacts = () => {
-    setContacts([]);
-    setPrevPages([]); // Reset pagination history!
-    setCurrentPage(1);
-    setNextPageUrl(null);
-    setContactsLoaded(false);
-    setAllRecordsSelected(false);
-    if (locationId) {
-      const initialUrl = `/api/get-contacts?locationId=${locationId}&limit=${limit}`;
-      setCurrentPageUrl(initialUrl);
-      loadPage(initialUrl, 1, true);
-    }
-  };
+  const handleLoadContacts = (search = '', tag = '', page = 1) => {
+  setContacts([]);
+  setPrevPages([]); // Reset pagination history!
+  setCurrentPage(page);
+  setNextPageUrl(null);
+  setContactsLoaded(false);
+  setAllRecordsSelected(false);
+  if (locationId) {
+    const initialUrl = buildContactsApiUrl({ locationId, limit, tag, search, page });
+    setCurrentPageUrl(initialUrl);
+    loadPage(initialUrl, page, true);
+  }
+};
 
-  const openContactsModal = () => {
-    setContactsModal(true);
-    if (!contactsLoaded && !loadingContacts) handleLoadContacts();
-  };
+const openContactsModal = () => {
+  setContactsModal(true);
+  if (!contactsLoaded && !loadingContacts) handleLoadContacts(searchTerm, selectedTag, 1);
+};
 
-  const filteredContacts = () => {
-    let filtered = contacts;
-    if (selectedTag) {
-      filtered = filtered.filter(contact =>
-        Array.isArray(contact.tags) && contact.tags.includes(selectedTag)
-      );
-    }
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(contact =>
-        (contact.firstName && contact.firstName.toLowerCase().includes(term)) ||
-        (contact.lastName && contact.lastName.toLowerCase().includes(term)) ||
-        (contact.email && contact.email.toLowerCase().includes(term)) ||
-        (contact.phone && contact.phone.toLowerCase().includes(term))
-      );
-    }
-    return filtered;
-  };
+useEffect(() => {
+  if (contactsModal && locationId) {
+    handleLoadContacts(searchTerm, selectedTag, 1);
+  }
+  // eslint-disable-next-line
+}, [searchTerm, selectedTag, contactsModal, locationId]);
+
+  const filteredContacts = () => contacts;
 
   // Select all contacts on page (checkbox in header)
   const isAllOnPageSelected = () => {
@@ -401,12 +400,13 @@ export default function ContactList() {
     }
   };
 
-  const handleNextPage = () => {
-    if (nextPageUrl) {
-      setPrevPages(prev => [...prev, { url: currentPageUrl, page: currentPage }]);
-      loadPage(nextPageUrl, currentPage + 1);
-    }
-  };
+const handleNextPage = () => {
+  if (nextPageUrl) {
+    const url = nextPageUrl.startsWith('/') ? nextPageUrl : `/api/get-contacts${nextPageUrl}`;
+    setPrevPages(prev => [...prev, { url: currentPageUrl, page: currentPage }]);
+    loadPage(url, currentPage + 1);
+  }
+};
 
   const handlePreviousPage = () => {
     if (currentPage > 1 && prevPages.length > 0) {

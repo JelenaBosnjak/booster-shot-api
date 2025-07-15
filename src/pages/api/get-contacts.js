@@ -4,7 +4,7 @@ export default async function handler(req, res) {
   }
 
   const API_TOKEN = process.env.GHL_API_TOKEN;
-  const { locationId, limit = 20, startAfter, startAfterId, latestImport } = req.query;
+  const { locationId, limit = 20, startAfter, startAfterId, latestImport, search, tag } = req.query;
 
   if (!API_TOKEN) {
     return res.status(500).json({ error: 'Missing API token' });
@@ -98,6 +98,24 @@ export default async function handler(req, res) {
     return allContacts;
   }
 
+  // Helper for backend search (case-insensitive, for name/email/phone/tag)
+  function contactMatchesSearch(contact, searchTerm, tag) {
+    if (!searchTerm && !tag) return true;
+    let match = true;
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      match =
+        (contact.firstName && contact.firstName.toLowerCase().includes(term)) ||
+        (contact.lastName && contact.lastName.toLowerCase().includes(term)) ||
+        (contact.email && contact.email.toLowerCase().includes(term)) ||
+        (contact.phone && contact.phone.toLowerCase().includes(term));
+    }
+    if (tag) {
+      if (!Array.isArray(contact.tags) || !contact.tags.includes(tag)) return false;
+    }
+    return match;
+  }
+
   try {
     if (latestImport === "true") {
       // Get field ID for "Import History"
@@ -153,7 +171,40 @@ export default async function handler(req, res) {
       });
     }
 
-    // DEFAULT MODE: Paginated contacts
+    // PAGINATED AND SEARCH MODE
+    // If search or tag filter is present, fetch all contacts and filter in-memory (API does not support server-side search).
+    if (search || tag) {
+      const allContacts = await fetchAllContactsByLocation();
+      let filteredContacts = allContacts.filter(c => contactMatchesSearch(c, search, tag));
+      const total = filteredContacts.length;
+
+      // Paginate filtered results in-memory
+      const pageLimit = parseInt(limit, 10) || 20;
+      const page = Math.max(
+        1,
+        req.query.page ? parseInt(req.query.page, 10) : 1
+      );
+      const offset = (page - 1) * pageLimit;
+      const paginatedContacts = filteredContacts.slice(offset, offset + pageLimit);
+
+      // Create a nextPageUrl if there are more results
+      const hasMore = offset + pageLimit < total;
+      const nextPageUrl = hasMore
+        ? `/api/get-contacts?locationId=${encodeURIComponent(locationId)}&limit=${pageLimit}&search=${encodeURIComponent(search || "")}${tag ? `&tag=${encodeURIComponent(tag)}` : ""}&page=${page + 1}`
+        : null;
+
+      return res.status(200).json({
+        contacts: paginatedContacts,
+        pagination: {
+          nextPageUrl,
+          total,
+          hasMore,
+          page,
+        }
+      });
+    }
+
+    // DEFAULT MODE: Paginated contacts (no search/tag)
     const params = new URLSearchParams();
     params.append('limit', limit);
     if (locationId) params.append('locationId', locationId);
